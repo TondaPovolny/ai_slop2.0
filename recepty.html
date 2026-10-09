@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recepty z Lednice - Chytré plánování jídel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .font-serif { font-family: 'Playfair Display', Georgia, serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 min-h-screen transition-colors">
+  <div id="app"></div>
+
+  <!-- Lucide icons via unpkg -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Standalone Application Logic -->
+  <script>
+    // --- DATABASE RECEPTŮ ---
+    const RECIPES_DB = [
+      {
+        id: 'r-carbonara',
+        title: 'Pravé krémové špagety Carbonara',
+        description: 'Tradiční římská klasika se žloutky, křupavou slaninou a parmazánem bez kapky smetany.',
+        category: 'obed_vece',
+        prepTime: 20,
+        difficulty: 'Střední',
+        portions: 2,
+        calories: 540,
+        macros: { protein: 26, carbs: 58, fat: 22 },
+        tags: ['Italská kuchyně', 'Rychlovka', 'Vysoký protein'],
+        imageUrl: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Špagety', amount: '220 g', val: 220, unit: 'g' },
+          { name: 'Vejce', amount: '4 ks', val: 4, unit: 'ks' },
+          { name: 'Parmazán', amount: '60 g', val: 60, unit: 'g' },
+          { name: 'Slanina', amount: '120 g', val: 120, unit: 'g' },
+          { name: 'Černý pepř', amount: '1 lžička', val: 1, unit: 'lžička' }
+        ],
+        instructions: [
+          'Dejte vařit vydatně osolenou vodu na špagety a uvařte je al dente.',
+          'Na pánvi na mírném ohni pomalu opečte nakrájenou slaninu dokřupava.',
+          'V misce prošlehejte žloutky, jedno celé vejce, najemno nastrouhaný parmazán a čerstvě drcený černý pepř.',
+          'Uvařené špagety přendejte kleštěmi rovnou k orestované slanině (mimo oheň!).',
+          'Přidejte cca 3 lžíce horké vody z těstovin a vlijte vaječnou směs.',
+          'Rychle míchejte, dokud teplo těstovin nevytvoří lesklou, sametovou omáčku.'
+        ],
+        chefTip: 'Voda ze špaget plná škrobu je tajemstvím dokonalé emulze. Přilévejte ji po lžících.'
+      },
+      {
+        id: 'r-shakshuka',
+        title: 'Orientální Shakshuka s vejci a rajčaty',
+        description: 'Bohatá jednopánvová snídaně či večeře s voňavou rajčatovou omáčkou a tekutými žloutky.',
+        category: 'snidane',
+        prepTime: 25,
+        difficulty: 'Snadné',
+        portions: 2,
+        calories: 320,
+        macros: { protein: 18, carbs: 22, fat: 16 },
+        tags: ['Vegetariánské', 'Jedna pánev', 'Bez lepku'],
+        imageUrl: 'https://images.unsplash.com/photo-1590412200988-a436970781fa?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Vejce', amount: '4 ks', val: 4, unit: 'ks' },
+          { name: 'Rajčata', amount: '4 ks', val: 4, unit: 'ks' },
+          { name: 'Cibule', amount: '1 ks', val: 1, unit: 'ks' },
+          { name: 'Česnek', amount: '2 stroužky', val: 2, unit: 'stroužky' },
+          { name: 'Paprika', amount: '1 ks', val: 1, unit: 'ks' },
+          { name: 'Olivový olej', amount: '2 lžíce', val: 2, unit: 'lžíce' }
+        ],
+        instructions: [
+          'Na olivovém oleji na pánvi zesklovatějte jemně nakrájenou cibuli s paprikou na nudličky.',
+          'Přidejte nasekaný česnek a po minutě vsypte nakrájená rajčata.',
+          'Osolte, opepřete a nechte omáčku zhruba 10 minut probublávat a zhoustnout.',
+          'V omáčce vařečkou vytvořte 4 důlky a do každého opatrně vyklepněte jedno vejce.',
+          'Pánev přiklopte pokličkou a nechte na mírném plamenu 5-7 minut, dokud bílky neztuhnou.'
+        ],
+        chefTip: 'Na závěr můžete posypat rozdrobenou fetou nebo čerstvou petrželkou.'
+      },
+      {
+        id: 'r-kure-na-paprice',
+        title: 'Tradiční kuře na paprice se smetanou a těstovinami',
+        description: 'Oblíbená česká klasika se sametovou smetanovou omáčkou a šťavnatým kuřecím masem.',
+        category: 'obed_vece',
+        prepTime: 35,
+        difficulty: 'Snadné',
+        portions: 2,
+        calories: 560,
+        macros: { protein: 44, carbs: 48, fat: 22 },
+        tags: ['Česká klasika', 'Vysoký protein', 'Rodinný oběd'],
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Kuřecí prsa', amount: '450 g', val: 450, unit: 'g' },
+          { name: 'Smetana', amount: '200 ml', val: 200, unit: 'ml' },
+          { name: 'Cibule', amount: '1 ks', val: 1, unit: 'ks' },
+          { name: 'Máslo', amount: '30 g', val: 30, unit: 'g' },
+          { name: 'Špagety', amount: '200 g', val: 200, unit: 'g' },
+          { name: 'Paprika', amount: '2 lžičky', val: 2, unit: 'lžičky' }
+        ],
+        instructions: [
+          'Na másle orestujte nadrobno nakrájenou cibulku dosklovata.',
+          'Přisypte mletou papriku, krátce promíchejte a ihned vložte na kousky nakrájené kuřecí maso.',
+          'Maso opečte, osolte, opepřete a zalijte trochou vody.',
+          'Duste pod pokličkou 15 minut, dokud maso nezměkne.',
+          'Přilijte smetanu a nechte omáčku mírně zhoustnout. Podávejte s uvařenými těstovinami.'
+        ],
+        chefTip: 'Papriku restujte na mírném ohni a jen krátce, aby nezhořkla.'
+      },
+      {
+        id: 'r-bolognese',
+        title: 'Poctivé boloňské špagety s mletým hovězím masem',
+        description: 'Hustá masová omáčka pomalu tažená na rajčatech s kořenovou zeleninou a parmazánem.',
+        category: 'obed_vece',
+        prepTime: 40,
+        difficulty: 'Střední',
+        portions: 2,
+        calories: 590,
+        macros: { protein: 38, carbs: 64, fat: 20 },
+        tags: ['Vysoký protein', 'Italská kuchyně', 'Rodinný oběd'],
+        imageUrl: 'https://images.unsplash.com/photo-1551892374-ecf8754cf8b0?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Mleté hovězí maso', amount: '350 g', val: 350, unit: 'g' },
+          { name: 'Špagety', amount: '220 g', val: 220, unit: 'g' },
+          { name: 'Rajčata', amount: '4 ks', val: 4, unit: 'ks' },
+          { name: 'Cibule', amount: '1 ks', val: 1, unit: 'ks' },
+          { name: 'Mrkev', amount: '1 ks', val: 1, unit: 'ks' },
+          { name: 'Česnek', amount: '2 stroužky', val: 2, unit: 'stroužky' },
+          { name: 'Olivový olej', amount: '2 lžíce', val: 2, unit: 'lžíce' },
+          { name: 'Parmazán', amount: '40 g', val: 40, unit: 'g' }
+        ],
+        instructions: [
+          'Na olivovém oleji orestujte nadrobno nakrájenou cibuli, mrkev a česnek.',
+          'Přidejte mleté hovězí maso a vařečkou ho rozmělněte na menší kousky.',
+          'Osolte, opepřete a přidejte pokrájená rajčata s trochou vody.',
+          'Ztlumte plamen a nechte omáčku pozvolna bublat cca 25 minut.',
+          'Špagety uvařte al dente, promíchejte s omáčkou a posypejte parmazánem.'
+        ],
+        chefTip: 'Jemně nakrájená mrkev dodá omáčce přirozenou sladkost bez cukru.'
+      },
+      {
+        id: 'r-penne-quattro-formaggi',
+        title: 'Krémové penne se sýrovou omáčkou z čedaru a parmazánu',
+        description: 'Horké těstoviny obalené v hedvábné sýrovo-smetanové omáčce s čerstvě mletým pepřem.',
+        category: 'obed_vece',
+        prepTime: 15,
+        difficulty: 'Snadné',
+        portions: 2,
+        calories: 540,
+        macros: { protein: 22, carbs: 58, fat: 24 },
+        tags: ['Rychlovka', 'Vegetariánské', 'Italská kuchyně'],
+        imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Těstoviny penne', amount: '220 g', val: 220, unit: 'g' },
+          { name: 'Smetana', amount: '180 ml', val: 180, unit: 'ml' },
+          { name: 'Čedar', amount: '70 g', val: 70, unit: 'g' },
+          { name: 'Parmazán', amount: '40 g', val: 40, unit: 'g' },
+          { name: 'Máslo', amount: '20 g', val: 20, unit: 'g' },
+          { name: 'Černý pepř', amount: '1/2 lžičky', val: 0.5, unit: 'lžičky' }
+        ],
+        instructions: [
+          'Penne uvařte v osolené vroucí vodě al dente.',
+          'V pánvi rozpusťte máslo a vlijte smetanu na mírný oheň.',
+          'Za stálého míchání přidejte nastrouhaný čedar i parmazán, dokud se nerozpustí.',
+          'Přidejte scezené těstoviny přímo do omáčky a promíchejte.',
+          'Opepřete a podávejte ihned, dokud se sýr táhne.'
+        ],
+        chefTip: 'Pár lžic vody ze slitých těstovin udrží omáčku dokonale hladkou.'
+      },
+      {
+        id: 'r-cockova-polevka',
+        title: 'Rychlá polévka z červené čočky a mrkve',
+        description: 'Hřejivá, výživná polévka hotová za 20 minut bez nutnosti namáčení luštěnin.',
+        category: 'obed_vece',
+        prepTime: 20,
+        difficulty: 'Snadné',
+        portions: 2,
+        calories: 310,
+        macros: { protein: 18, carbs: 46, fat: 6 },
+        tags: ['Vegetariánské', 'Vysoký obsah vlákniny', 'Levné a chutné'],
+        imageUrl: 'https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Červená čočka', amount: '160 g', val: 160, unit: 'g' },
+          { name: 'Mrkev', amount: '2 ks', val: 2, unit: 'ks' },
+          { name: 'Cibule', amount: '1 ks', val: 1, unit: 'ks' },
+          { name: 'Česnek', amount: '2 stroužky', val: 2, unit: 'stroužky' },
+          { name: 'Olivový olej', amount: '2 lžíce', val: 2, unit: 'lžíce' },
+          { name: 'Sušená majoránka', amount: '1 lžička', val: 1, unit: 'lžička' }
+        ],
+        instructions: [
+          'Na oleji v hrnci orestujte nakrájenou cibuli a mrkev na kolečka.',
+          'Přidejte česnek a propláchnutou červenou čočku.',
+          'Zalijte cca 700 ml vody, osolte a vařte 15 minut do změknutí.',
+          'Část polévky rozmixujte pro krémovou konzistenci a dochuťte majoránkou.'
+        ],
+        chefTip: 'Červená čočka se vaří bleskově a zahustí polévku bez mouky.'
+      },
+      {
+        id: 'r-krupicova-kase',
+        title: 'Tradiční jemná krupicová kaše s máslem a skořicí',
+        description: 'Nostalgická sladká večeře či snídaně provoněná máslem, jablky a medem.',
+        category: 'dezert',
+        prepTime: 10,
+        difficulty: 'Snadné',
+        portions: 2,
+        calories: 340,
+        macros: { protein: 11, carbs: 56, fat: 9 },
+        tags: ['Sladké', 'Snídaně', 'Rychlovka'],
+        imageUrl: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Mléko', amount: '500 ml', val: 500, unit: 'ml' },
+          { name: 'Hladká mouka', amount: '60 g', val: 60, unit: 'g' },
+          { name: 'Máslo', amount: '30 g', val: 30, unit: 'g' },
+          { name: 'Kvalitní med', amount: '2 lžíce', val: 2, unit: 'lžíce' },
+          { name: 'Jablka', amount: '1 ks', val: 1, unit: 'ks' }
+        ],
+        instructions: [
+          'V rendlíku přiveďte mléko k varu se špetkou soli.',
+          'Za stálého šlehání metličkou pomalu přisypávejte mouku/krupici.',
+          'Vařte na mírném ohni cca 3 minuty do zhoustnutí.',
+          'Nalijte do hlubokých talířů a bohatě polijte rozpuštěným máslem a medem.'
+        ],
+        chefTip: 'Šlehání metličkou od začátku zabrání vzniku hrudek.'
+      },
+      {
+        id: 'r-kureci-brambory',
+        title: 'Kuřecí prsa na bylinkovém másle s bramborami',
+        description: 'Dokonale zlatavé kuřecí maso provoněné česnekem s pečenými brambůrkami.',
+        category: 'obed_vece',
+        prepTime: 35,
+        difficulty: 'Střední',
+        portions: 2,
+        calories: 520,
+        macros: { protein: 48, carbs: 42, fat: 16 },
+        tags: ['Vysoký protein', 'Česká klasika'],
+        imageUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Kuřecí prsa', amount: '450 g', val: 450, unit: 'g' },
+          { name: 'Brambory', amount: '500 g', val: 500, unit: 'g' },
+          { name: 'Máslo', amount: '35 g', val: 35, unit: 'g' },
+          { name: 'Česnek', amount: '3 stroužky', val: 3, unit: 'stroužky' },
+          { name: 'Olivový olej', amount: '2 lžíce', val: 2, unit: 'lžíce' }
+        ],
+        instructions: [
+          'Brambory nakrájejte, osolte a upečte v troubě na 200 °C na 25 minut.',
+          'Kuřecí prsa opečte na pánvi zprudka 3 minuty z každé strany.',
+          'Přidejte máslo a česnek a přelévejte maso horkým máslem 2 minuty.'
+        ],
+        chefTip: 'Přelévání horkým máslem udrží kuřecí prsa maximálně šťavnatá.'
+      },
+      {
+        id: 'r-bramboraky',
+        title: 'Křupavé české bramboráčky s majoránkou a česnekem',
+        description: 'Tradiční křupavé placičky ze strouhaných brambor s poctivou dávkou česneku.',
+        category: 'obed_vece',
+        prepTime: 30,
+        difficulty: 'Snadné',
+        portions: 2,
+        calories: 390,
+        macros: { protein: 11, carbs: 54, fat: 15 },
+        tags: ['Česká klasika', 'Vegetariánské'],
+        imageUrl: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Brambory', amount: '600 g', val: 600, unit: 'g' },
+          { name: 'Vejce', amount: '2 ks', val: 2, unit: 'ks' },
+          { name: 'Česnek', amount: '4 stroužky', val: 4, unit: 'stroužky' },
+          { name: 'Hladká mouka', amount: '3 lžíce', val: 3, unit: 'lžíce' },
+          { name: 'Sušená majoránka', amount: '1 lžíce', val: 1, unit: 'lžíce' },
+          { name: 'Olivový olej', amount: '3 lžíce', val: 3, unit: 'lžíce' }
+        ],
+        instructions: [
+          'Brambory nastrouhejte najemno a důkladně vymačkejte vodu.',
+          'Přidejte vejce, česnek, mouku, sůl a promnutou majoránku.',
+          'Smažte na pánvi tenké placičky z obou stran dokřupava.'
+        ],
+        chefTip: 'Čím lépe vymačkáte vodu z brambor, tím křupavější budou.'
+      },
+      {
+        id: 'r-omeleta-spenat',
+        title: 'Nadýchaná francouzská omeleta se špenátem a sýrem',
+        description: 'Jemná máslová omeleta s čerstvým listovým špenátem a sýrem do 10 minut.',
+        category: 'snidane',
+        prepTime: 12,
+        difficulty: 'Snadné',
+        portions: 1,
+        calories: 360,
+        macros: { protein: 24, carbs: 4, fat: 28 },
+        tags: ['Rychlovka', 'Vegetariánské'],
+        imageUrl: 'https://images.unsplash.com/photo-1510693206972-df098062cb71?auto=format&fit=crop&w=900&q=80',
+        ingredients: [
+          { name: 'Vejce', amount: '3 ks', val: 3, unit: 'ks' },
+          { name: 'Baby špenát', amount: '50 g', val: 50, unit: 'g' },
+          { name: 'Máslo', amount: '20 g', val: 20, unit: 'g' },
+          { name: 'Parmazán', amount: '30 g', val: 30, unit: 'g' }
+        ],
+        instructions: [
+          'Špenát nechte zavadnout na kousku másla.',
+          'Vejce jemně prošlehejte a vlijte na pánev s rozpuštěným máslem.',
+          'Jakmile je spodek pevný a vrch vláčný, posypte špenátem a sýrem a přeložte napůl.'
+        ],
+        chefTip: 'Vnitřek pravé francouzské omelety musí zůstat lehce krémový.'
+      }
+    ];
+
+    // --- VÝCHOZÍ SUROVINY V LEDNICI ---
+    const DEFAULT_FRIDGE = [
+      { id: 'f-1', name: 'Vejce', amount: '6 ks', expiresSoon: true },
+      { id: 'f-2', name: 'Máslo', amount: '120 g', expiresSoon: false },
+      { id: 'f-3', name: 'Špagety', amount: '500 g', expiresSoon: false },
+      { id: 'f-4', name: 'Parmazán', amount: '80 g', expiresSoon: false },
+      { id: 'f-5', name: 'Cibule', amount: '3 ks', expiresSoon: false },
+      { id: 'f-6', name: 'Česnek', amount: '4 stroužky', expiresSoon: false },
+      { id: 'f-7', name: 'Olivový olej', amount: '500 ml', expiresSoon: false },
+      { id: 'f-8', name: 'Rajčata', amount: '4 ks', expiresSoon: true },
+      { id: 'f-9', name: 'Kuřecí prsa', amount: '500 g', expiresSoon: false },
+      { id: 'f-10', name: 'Brambory', amount: '1 kg', expiresSoon: false },
+      { id: 'f-11', name: 'Smetana', amount: '200 ml', expiresSoon: true },
+      { id: 'f-12', name: 'Baby špenát', amount: '125 g', expiresSoon: true }
+    ];
+
+    // --- APLIKAČNÍ STAV ---
+    let state = {
+      tab: 'recipes', // recipes, fridge, favorites, planner, shopping
+      isDark: localStorage.getItem('recepty-theme') === 'dark',
+      fridge: JSON.parse(localStorage.getItem('recepty-fridge') || JSON.stringify(DEFAULT_FRIDGE)),
+      favorites: JSON.parse(localStorage.getItem('recepty-favs') || JSON.stringify(['r-carbonara', 'r-shakshuka'])),
+      shopping: JSON.parse(localStorage.getItem('recepty-shop') || '[]'),
+      planner: JSON.parse(localStorage.getItem('recepty-plan') || '[]'),
+      selectedRecipe: null,
+      portions: 2,
+      search: '',
+      category: 'all',
+      only100: false,
+      timerSeconds: 0,
+      timerActive: false,
+      notes: JSON.parse(localStorage.getItem('recepty-notes') || '{}'),
+      ratings: JSON.parse(localStorage.getItem('recepty-ratings') || '{}')
+    };
+
+    function saveState() {
+      localStorage.setItem('recepty-theme', state.isDark ? 'dark' : 'light');
+      localStorage.setItem('recepty-fridge', JSON.stringify(state.fridge));
+      localStorage.setItem('recepty-favs', JSON.stringify(state.favorites));
+      localStorage.setItem('recepty-shop', JSON.stringify(state.shopping));
+      localStorage.setItem('recepty-plan', JSON.stringify(state.planner));
+      localStorage.setItem('recepty-notes', JSON.stringify(state.notes));
+      localStorage.setItem('recepty-ratings', JSON.stringify(state.ratings));
+    }
+
+    function toggleDark() {
+      state.isDark = !state.isDark;
+      if (state.isDark) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+      saveState();
+      render();
+    }
+
+    // Inicializace tmavého režimu
+    if (state.isDark) document.documentElement.classList.add('dark');
+
+    // Párování surovin
+    function norm(t) {
+      return (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    function matchRecipe(recipe) {
+      let have = [];
+      let missing = [];
+      recipe.ingredients.forEach(ing => {
+        const found = state.fridge.find(f => norm(f.name).includes(norm(ing.name)) || norm(ing.name).includes(norm(f.name)));
+        if (found) have.push(ing.name);
+        else missing.push(ing);
+      });
+      const score = Math.round((have.length / recipe.ingredients.length) * 100);
+      return { recipe, score, have, missing };
+    }
+
+    // Minutka
+    setInterval(() => {
+      if (state.timerActive && state.timerSeconds > 0) {
+        state.timerSeconds--;
+        const timerEl = document.getElementById('timer-display');
+        if (timerEl) {
+          const m = Math.floor(state.timerSeconds / 60);
+          const s = state.timerSeconds % 60;
+          timerEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+        if (state.timerSeconds === 0) {
+          state.timerActive = false;
+          alert('Minutka dovařila! Jídlo je hotovo.');
+        }
+      }
+    }, 1000);
+
+    // Hlavní vykreslení
+    function render() {
+      const app = document.getElementById('app');
+      const matches = RECIPES_DB.map(matchRecipe);
+      const fullCount = matches.filter(m => m.score === 100).length;
+
+      // Filtrované recepty
+      let displayRecipes = matches.filter(m => {
+        if (state.only100 && m.score < 100) return false;
+        if (state.category !== 'all' && m.recipe.category !== state.category) return false;
+        if (state.search) {
+          const q = norm(state.search);
+          return norm(m.recipe.title).includes(q) || norm(m.recipe.description).includes(q);
+        }
+        return true;
+      });
+      displayRecipes.sort((a, b) => b.score - a.score);
+
+      app.innerHTML = `
+        <!-- HEADER -->
+        <header class="sticky top-0 z-30 bg-stone-50/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 transition-colors">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl shadow-sm">
+                🍳
+              </div>
+              <div>
+                <h1 class="font-serif font-bold text-xl sm:text-2xl text-stone-900 dark:text-stone-100 tracking-tight">Recepty z Lednice</h1>
+                <p class="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">Chytré vaření bez nutnosti nákupu</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="toggleDark()" class="p-2.5 rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition-colors">
+                ${state.isDark ? '☀️ Světlý režim' : '🌙 Tmavý režim'}
+              </button>
+            </div>
+          </div>
+
+          <!-- NAV TABS -->
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto py-2 border-t border-stone-100 dark:border-stone-800 text-xs sm:text-sm">
+            <button onclick="state.tab='recipes'; render();" class="px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${state.tab === 'recipes' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}">
+              🍳 Nabídka receptů
+            </button>
+            <button onclick="state.tab='fridge'; render();" class="px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${state.tab === 'fridge' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}">
+              🧊 Moje lednice (${state.fridge.length})
+            </button>
+            <button onclick="state.tab='favorites'; render();" class="px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${state.tab === 'favorites' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}">
+              ❤️ Oblíbené (${state.favorites.length})
+            </button>
+            <button onclick="state.tab='planner'; render();" class="px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${state.tab === 'planner' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}">
+              📅 Týdenní plánovač
+            </button>
+            <button onclick="state.tab='shopping'; render();" class="px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${state.tab === 'shopping' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}">
+              🛒 Nákup (${state.shopping.filter(i=>!i.checked).length})
+            </button>
+          </div>
+        </header>
+
+        <!-- MAIN BODY -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          ${renderTabContent(displayRecipes, fullCount)}
+        </main>
+
+        <!-- RECIPE MODAL -->
+        ${state.selectedRecipe ? renderRecipeModal() : ''}
+      `;
+    }
+
+    function renderTabContent(displayRecipes, fullCount) {
+      if (state.tab === 'recipes') {
+        return `
+          <!-- BANNER -->
+          <div class="bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 text-white rounded-3xl p-6 sm:p-8 mb-6 shadow-sm">
+            <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Automatické doporučení z ${state.fridge.length} surovin</span>
+            <h2 class="font-serif text-2xl sm:text-4xl font-bold mt-1">Co si dnes uvaříte?</h2>
+            <p class="mt-2 text-sm text-stone-300 max-w-xl">
+              Podle surovin ve vaší lednici můžete ihned uvařit 
+              <strong class="text-emerald-400 font-semibold">${fullCount} jídel na 100 % bez nákupu</strong>.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button onclick="state.only100 = !state.only100; render();" class="px-4 py-1.5 text-xs font-semibold rounded-lg ${state.only100 ? 'bg-emerald-600 text-white' : 'bg-white/10 hover:bg-white/20 text-stone-200'}">
+                ✓ Pouze 100 % v lednici (${fullCount})
+              </button>
+              <button onclick="state.tab='fridge'; render();" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-stone-200">
+                🧊 Spravovat obsah lednice
+              </button>
+            </div>
+          </div>
+
+          <!-- SEARCH & FILTER -->
+          <div class="bg-white dark:bg-stone-850 rounded-2xl p-4 border border-stone-200 dark:border-stone-800 mb-6 flex flex-col md:flex-row gap-3">
+            <input 
+              type="text" 
+              placeholder="Hledat podle názvu jídla nebo ingredience..." 
+              value="${state.search}" 
+              oninput="state.search = this.value; render();"
+              class="flex-1 px-4 py-2 text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <div class="flex gap-1 overflow-x-auto text-xs">
+              ${['all', 'snidane', 'obed_vece', 'dezert'].map(cat => `
+                <button onclick="state.category='${cat}'; render();" class="px-3 py-2 rounded-lg font-medium whitespace-nowrap ${state.category === cat ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'}">
+                  ${cat === 'all' ? 'Všechna jídla' : cat === 'snidane' ? 'Snídaně' : cat === 'obed_vece' ? 'Obědy & Večeře' : 'Dezerty'}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- RECIPE GRID -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${displayRecipes.map(m => `
+              <div class="bg-white dark:bg-stone-850 rounded-2xl overflow-hidden border border-stone-200 dark:border-stone-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                <div>
+                  <div class="relative h-48 w-full overflow-hidden bg-stone-100 dark:bg-stone-800">
+                    <img src="${m.recipe.imageUrl}" alt="${m.recipe.title}" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-900/60 via-transparent to-transparent"></div>
+                    <button onclick="toggleFav('${m.recipe.id}')" class="absolute top-3 right-3 p-2 rounded-full backdrop-blur-md ${state.favorites.includes(m.recipe.id) ? 'bg-rose-500 text-white' : 'bg-white/80 dark:bg-stone-900/80 text-stone-700 dark:text-stone-300'}">
+                      ❤️
+                    </button>
+                    <div class="absolute bottom-2.5 left-3 text-xs font-semibold text-white">
+                      ${m.score === 100 ? '🟢 100% surovin v lednici' : `🟡 ${m.score}% shoda (chybí ${m.missing.length})`}
+                    </div>
+                  </div>
+                  <div class="p-4 space-y-2">
+                    <div class="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+                      <span>${m.recipe.prepTime} min</span> · <span>${m.recipe.calories} kcal</span> · <span>${m.recipe.difficulty}</span>
+                    </div>
+                    <h3 onclick="openRecipe('${m.recipe.id}')" class="font-serif text-lg font-bold text-stone-900 dark:text-stone-100 hover:text-emerald-600 cursor-pointer line-clamp-1">
+                      ${m.recipe.title}
+                    </h3>
+                    <p class="text-xs text-stone-600 dark:text-stone-400 line-clamp-2">${m.recipe.description}</p>
+                    ${m.missing.length > 0 ? `
+                      <div class="text-xs text-amber-700 dark:text-amber-400 pt-1">
+                        Chybí: ${m.missing.map(i=>i.name).join(', ')}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                <div class="p-4 pt-0 flex justify-between gap-2 border-t border-stone-100 dark:border-stone-800 mt-2">
+                  <button onclick="addToPlan('${m.recipe.id}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800">
+                    + Naplánovat
+                  </button>
+                  <button onclick="openRecipe('${m.recipe.id}')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900">
+                    Zobrazit recept →
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (state.tab === 'fridge') {
+        return `
+          <div class="bg-stone-100 dark:bg-stone-800/80 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 class="font-serif text-2xl font-bold">Moje lednice a spíž</h2>
+              <p class="text-xs text-stone-600 dark:text-stone-300 mt-1">Celkem ${state.fridge.length} surovin</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="state.fridge = [...DEFAULT_FRIDGE]; saveState(); render();" class="px-3 py-2 text-xs font-semibold rounded-xl border border-stone-300 dark:border-stone-700">
+                Obnovit vzorovou lednici
+              </button>
+              <button onclick="state.tab='recipes'; render();" class="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white">
+                Zobrazit recepty
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white dark:bg-stone-850 rounded-2xl p-5 border border-stone-200 dark:border-stone-800 h-fit">
+              <h3 class="font-bold text-sm mb-3">Přidat surovinu do lednice</h3>
+              <form onsubmit="addFridgeItem(event)" class="space-y-3">
+                <input id="fridge-name" type="text" placeholder="Název (např. Šunka)" required class="w-full px-3 py-2 text-sm rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 outline-none">
+                <input id="fridge-amount" type="text" placeholder="Množství (např. 200 g)" class="w-full px-3 py-2 text-sm rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 outline-none">
+                <label class="flex items-center gap-2 text-xs cursor-pointer">
+                  <input id="fridge-exp" type="checkbox" class="w-4 h-4">
+                  <span>Spotřebovat brzy (expiruje)</span>
+                </label>
+                <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Vložit do lednice</button>
+              </form>
+            </div>
+
+            <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              ${state.fridge.map(item => `
+                <div class="p-3 rounded-xl border ${item.expiresSoon ? 'border-amber-300 dark:border-amber-800 bg-amber-50/20' : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-850'} flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold text-sm">${item.name}</h4>
+                    <span class="text-xs text-stone-500">${item.amount || 'na skladě'}</span>
+                  </div>
+                  <button onclick="removeFridgeItem('${item.id}')" class="text-stone-400 hover:text-rose-500 text-sm p-1">🗑️</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (state.tab === 'favorites') {
+        const favs = RECIPES_DB.filter(r => state.favorites.includes(r.id));
+        return `
+          <div class="bg-stone-100 dark:bg-stone-800/80 rounded-2xl p-6 mb-6">
+            <h2 class="font-serif text-2xl font-bold">Oblíbené recepty (${favs.length})</h2>
+            <p class="text-xs text-stone-600 dark:text-stone-300 mt-1">Uložené pro rychlý přístup</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${favs.map(r => `
+              <div class="bg-white dark:bg-stone-850 rounded-2xl overflow-hidden border border-stone-200 dark:border-stone-800 p-4">
+                <img src="${r.imageUrl}" class="w-full h-40 object-cover rounded-xl mb-3">
+                <h3 onclick="openRecipe('${r.id}')" class="font-serif font-bold text-lg cursor-pointer hover:text-emerald-600">${r.title}</h3>
+                <p class="text-xs text-stone-500 mt-1">${r.prepTime} min · ${r.calories} kcal</p>
+                <div class="mt-4 flex justify-between">
+                  <button onclick="toggleFav('${r.id}')" class="text-xs text-rose-500 font-semibold">Odebrat z oblíbených</button>
+                  <button onclick="openRecipe('${r.id}')" class="px-3 py-1 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-lg text-xs font-semibold">Vařit →</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (state.tab === 'planner') {
+        const days = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'];
+        return `
+          <div class="bg-stone-100 dark:bg-stone-800/80 rounded-2xl p-6 mb-6 flex justify-between items-center">
+            <div>
+              <h2 class="font-serif text-2xl font-bold">Týdenní plánovač jídel</h2>
+              <p class="text-xs text-stone-600 dark:text-stone-300 mt-1">Naplánováno ${state.planner.length} jídel</p>
+            </div>
+            <button onclick="generateShoppingFromPlan()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold">
+              🛒 Přidat chybějící do nákupního seznamu
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
+            ${days.map(d => {
+              const dayMeals = state.planner.filter(p => p.day === d);
+              return `
+                <div class="bg-white dark:bg-stone-850 rounded-2xl p-3 border border-stone-200 dark:border-stone-800 min-h-[220px]">
+                  <h4 class="font-bold text-sm pb-2 border-b border-stone-100 dark:border-stone-800">${d}</h4>
+                  <div class="space-y-2 mt-2">
+                    ${dayMeals.map(m => `
+                      <div class="bg-stone-50 dark:bg-stone-900 p-2 rounded-lg text-xs flex justify-between items-center">
+                        <span class="truncate font-medium">${m.title}</span>
+                        <button onclick="removePlanMeal('${m.id}')" class="text-stone-400 hover:text-rose-500">×</button>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      } else if (state.tab === 'shopping') {
+        const pending = state.shopping.filter(i => !i.checked);
+        const done = state.shopping.filter(i => i.checked);
+        return `
+          <div class="bg-stone-100 dark:bg-stone-800/80 rounded-2xl p-6 mb-6 flex justify-between items-center">
+            <div>
+              <h2 class="font-serif text-2xl font-bold">Nákupní seznam</h2>
+              <p class="text-xs text-stone-600 dark:text-stone-300 mt-1">${pending.length} položek k nákupu</p>
+            </div>
+            ${done.length > 0 ? `
+              <button onclick="moveDoneToFridge()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold">
+                🧊 Přesunout nakoupené (${done.length}) do lednice
+              </button>
+            ` : ''}
+          </div>
+
+          <div class="max-w-xl mx-auto space-y-4">
+            <form onsubmit="addShoppingItem(event)" class="flex gap-2">
+              <input id="shop-name" type="text" placeholder="Co potřebujete koupit?" required class="flex-1 px-4 py-2 text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-850">
+              <button type="submit" class="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-xl text-xs font-semibold">Přidat</button>
+            </form>
+
+            <div class="bg-white dark:bg-stone-850 rounded-2xl p-4 border border-stone-200 dark:border-stone-800 space-y-2">
+              ${state.shopping.map(item => `
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800/50">
+                  <label class="flex items-center gap-3 cursor-pointer flex-1">
+                    <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleShopItem('${item.id}')" class="w-4 h-4 text-emerald-600">
+                    <span class="text-sm ${item.checked ? 'line-through text-stone-400' : 'text-stone-900 dark:text-stone-100'}">${item.name}</span>
+                  </label>
+                  <button onclick="removeShopItem('${item.id}')" class="text-stone-400 hover:text-rose-500 text-xs">Smazat</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // DETAIL RECEPTU MODAL
+    function renderRecipeModal() {
+      const r = state.selectedRecipe;
+      const match = matchRecipe(r);
+      const ratio = state.portions / (r.portions || 2);
+
+      return `
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
+          <div class="bg-white dark:bg-stone-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden relative">
+            <button onclick="state.selectedRecipe = null; render();" class="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-stone-900/70 text-white flex items-center justify-center">×</button>
+            <img src="${r.imageUrl}" class="w-full h-56 object-cover">
+            
+            <div class="p-6 space-y-6">
+              <div>
+                <div class="text-xs text-stone-500 mb-1">${r.prepTime} min · ${r.calories} kcal · ${r.difficulty}</div>
+                <h2 class="font-serif text-2xl sm:text-3xl font-bold">${r.title}</h2>
+                <p class="text-sm text-stone-600 dark:text-stone-400 mt-2">${r.description}</p>
+              </div>
+
+              <!-- PŘEPOČET PORCÍ -->
+              <div class="bg-stone-50 dark:bg-stone-850 p-4 rounded-xl flex justify-between items-center">
+                <span class="text-xs font-bold uppercase">Počet porcí:</span>
+                <div class="flex gap-1">
+                  ${[1, 2, 4, 6].map(p => `
+                    <button onclick="state.portions = ${p}; render();" class="px-3 py-1 rounded text-xs font-semibold ${state.portions === p ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900' : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300'}">
+                      ${p}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- SUROVINY -->
+              <div>
+                <div class="flex justify-between items-center mb-3">
+                  <h3 class="font-bold text-base">Potřebné suroviny (${state.portions} porce)</h3>
+                  ${match.missing.length > 0 ? `
+                    <button onclick="addMissingToShop()" class="text-xs font-semibold px-3 py-1.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                      + Koupit chybějící (${match.missing.length})
+                    </button>
+                  ` : ''}
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  ${r.ingredients.map(ing => {
+                    const have = match.have.includes(ing.name);
+                    const scaled = ing.val ? `${Math.round(ing.val * ratio)} ${ing.unit}` : ing.amount;
+                    return `
+                      <div class="p-2.5 rounded-lg border flex justify-between ${have ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50/30' : 'border-stone-200 dark:border-stone-800'}">
+                        <span>${have ? '🟢' : '⚪'} ${ing.name}</span>
+                        <span class="font-semibold text-xs text-stone-500">${scaled}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- POSTUP -->
+              <div>
+                <h3 class="font-bold text-base mb-3">Postup přípravy</h3>
+                <ol class="space-y-3 text-sm">
+                  ${r.instructions.map((step, idx) => `
+                    <li class="flex gap-3 p-3 rounded-xl border border-stone-100 dark:border-stone-800">
+                      <span class="font-bold text-emerald-600">${idx + 1}.</span>
+                      <span>${step}</span>
+                    </li>
+                  `).join('')}
+                </ol>
+              </div>
+
+              <!-- MINUTKA -->
+              <div class="bg-stone-50 dark:bg-stone-850 p-4 rounded-xl flex justify-between items-center">
+                <div>
+                  <span class="text-xs font-bold uppercase block">Kuchyňská minutka</span>
+                  <span id="timer-display" class="font-mono text-xl font-bold">
+                    ${Math.floor(state.timerSeconds / 60).toString().padStart(2, '0')}:${(state.timerSeconds % 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="startTimer(${r.prepTime})" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold">
+                    ${state.timerActive ? 'Pozastavit' : 'Spustit'}
+                  </button>
+                  <button onclick="state.timerSeconds = ${r.prepTime * 60}; state.timerActive = false; render();" class="px-3 py-1.5 border border-stone-300 dark:border-stone-700 rounded-lg text-xs">
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              ${r.chefTip ? `
+                <div class="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-xl text-xs text-amber-900 dark:text-amber-200">
+                  <strong>💡 Tip šéfkuchaře:</strong> ${r.chefTip}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- OVLÁDACÍ FUNKCE ---
+    function toggleFav(id) {
+      if (state.favorites.includes(id)) {
+        state.favorites = state.favorites.filter(f => f !== id);
+      } else {
+        state.favorites.push(id);
+      }
+      saveState();
+      render();
+    }
+
+    function openRecipe(id) {
+      const r = RECIPES_DB.find(x => x.id === id);
+      if (r) {
+        state.selectedRecipe = r;
+        state.portions = r.portions || 2;
+        state.timerSeconds = r.prepTime * 60;
+        state.timerActive = false;
+        render();
+      }
+    }
+
+    function startTimer(prepTime) {
+      if (state.timerSeconds === 0) state.timerSeconds = prepTime * 60;
+      state.timerActive = !state.timerActive;
+      render();
+    }
+
+    function addFridgeItem(e) {
+      e.preventDefault();
+      const name = document.getElementById('fridge-name').value;
+      const amount = document.getElementById('fridge-amount').value;
+      const expiresSoon = document.getElementById('fridge-exp').checked;
+      state.fridge.unshift({
+        id: 'f-' + Date.now(),
+        name,
+        amount,
+        expiresSoon
+      });
+      saveState();
+      render();
+    }
+
+    function removeFridgeItem(id) {
+      state.fridge = state.fridge.filter(i => i.id !== id);
+      saveState();
+      render();
+    }
+
+    function addToPlan(recipeId) {
+      const r = RECIPES_DB.find(x => x.id === recipeId);
+      if (r) {
+        state.planner.push({
+          id: 'p-' + Date.now(),
+          day: 'Pondělí',
+          recipeId: r.id,
+          title: r.title
+        });
+        saveState();
+        state.tab = 'planner';
+        render();
+      }
+    }
+
+    function removePlanMeal(id) {
+      state.planner = state.planner.filter(m => m.id !== id);
+      saveState();
+      render();
+    }
+
+    function generateShoppingFromPlan() {
+      state.planner.forEach(m => {
+        const rec = RECIPES_DB.find(x => x.id === m.recipeId);
+        if (rec) {
+          rec.ingredients.forEach(ing => {
+            const have = state.fridge.some(f => norm(f.name).includes(norm(ing.name)));
+            if (!have && !state.shopping.some(s => norm(s.name) === norm(ing.name))) {
+              state.shopping.push({
+                id: 's-' + Date.now() + Math.random(),
+                name: ing.name,
+                checked: false
+              });
+            }
+          });
+        }
+      });
+      saveState();
+      state.tab = 'shopping';
+      render();
+    }
+
+    function addShoppingItem(e) {
+      e.preventDefault();
+      const val = document.getElementById('shop-name').value;
+      state.shopping.push({
+        id: 's-' + Date.now(),
+        name: val,
+        checked: false
+      });
+      saveState();
+      render();
+    }
+
+    function toggleShopItem(id) {
+      const item = state.shopping.find(i => i.id === id);
+      if (item) item.checked = !item.checked;
+      saveState();
+      render();
+    }
+
+    function removeShopItem(id) {
+      state.shopping = state.shopping.filter(i => i.id !== id);
+      saveState();
+      render();
+    }
+
+    function moveDoneToFridge() {
+      const done = state.shopping.filter(i => i.checked);
+      done.forEach(d => {
+        state.fridge.push({
+          id: 'f-transfer-' + Date.now() + Math.random(),
+          name: d.name,
+          amount: '1 balení',
+          expiresSoon: false
+        });
+      });
+      state.shopping = state.shopping.filter(i => !i.checked);
+      saveState();
+      state.tab = 'fridge';
+      render();
+    }
+
+    function addMissingToShop() {
+      const match = matchRecipe(state.selectedRecipe);
+      match.missing.forEach(m => {
+        if (!state.shopping.some(s => norm(s.name) === norm(m.name))) {
+          state.shopping.push({
+            id: 's-' + Date.now() + Math.random(),
+            name: m.name,
+            checked: false
+          });
+        }
+      });
+      saveState();
+      alert('Chybějící suroviny byly přidány do nákupního seznamu!');
+      render();
+    }
+
+    // Prvotní start
+    render();
+  </script>
+</body>
+</html>

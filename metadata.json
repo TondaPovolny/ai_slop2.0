@@ -1,0 +1,6 @@
+{
+  "name": "Recepty z Lednice",
+  "description": "Chytrý kulinářský rádce, který automaticky navrhuje pokrmy podle dostupných surovin v lednici s podporou tmavého režimu, oblíbených receptů a plánování jídelníčku.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

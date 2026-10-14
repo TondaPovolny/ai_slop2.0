@@ -1,6 +1,0 @@
-{
-  "name": "CoDůmDal - Recepty z Lednice a Nákupní Seznam",
-  "description": "Chytrý rádce receptů podle surovin v lednici s automatickým generováním nákupního seznamu a tipy proti plýtvání potravinami.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

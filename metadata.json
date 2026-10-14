@@ -1,6 +1,0 @@
-{
-  "name": "Chytrá kalkulačka receptů s nákupním seznamem",
-  "description": "Mobilní kalkulačka porcí receptů s dynamickým přepočtem surovin, kontrolou zásob v domácnosti a interaktivním nákupním seznamem pro supermarket.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

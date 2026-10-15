@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chytrý kuchař & Nákupní seznam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-overlay: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(255, 255, 255, 0.5);
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --primary: #f97316; 
+            --primary-hover: #ea580c;
+            --item-bg: rgba(255, 255, 255, 0.95);
+            --item-border: #e5e7eb;
+            --shadow-color: rgba(0, 0, 0, 0.15);
+            --nav-bg: rgba(255, 255, 255, 0.95);
+        }
+        .dark-mode {
+            --bg-overlay: rgba(15, 23, 42, 0.85);
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #f97316;
+            --primary-hover: #ea580c;
+            --item-bg: rgba(30, 41, 59, 0.95);
+            --item-border: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --nav-bg: rgba(15, 23, 42, 0.95);
+        }
+        body {
+            background-image: linear-gradient(var(--bg-overlay), var(--bg-overlay)), url('https://images.unsplash.com/photo-1584286595398-a59f21d313f5?auto=format&fit=crop&w=2000&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: var(--text-main);
+            transition: color 0.3s, background-image 0.5s;
+            font-family: 'Poppins', sans-serif;
+            padding-top: 110px; /* Přidáno odsazení pro fixní menu nahoře */
+            padding-bottom: 2rem;
+        }
+        .glass-card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 10px 30px -10px var(--shadow-color), 0 4px 6px -4px rgba(0,0,0,0.05);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .list-item {
+            background-color: var(--item-bg);
+            border: 1px solid var(--item-border);
+            transition: all 0.3s ease;
+        }
+        .list-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+        .line-through-custom { text-decoration: line-through; color: var(--text-muted); opacity: 0.6; transition: all 0.3s; }
+        input[type="checkbox"] { accent-color: var(--primary); width: 1.25rem; height: 1.25rem; cursor: pointer; transition: transform 0.2s; }
+        input[type="checkbox"]:hover { transform: scale(1.1); }
+        select, input[type="text"], input[type="number"] { background-color: var(--item-bg); color: var(--text-main); border: 1px solid var(--item-border); }
+        ol.postup-list li::marker { color: var(--primary); font-weight: 600; }
+        
+        /* Plovoucí Horní Navigace v pravém rohu */
+        .top-nav {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background-color: var(--nav-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 2rem;
+            z-index: 50;
+            display: flex;
+            gap: 1.5rem;
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.75rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .nav-item.active { color: var(--primary); }
+        .nav-item:hover { transform: translateY(-2px); color: var(--primary-hover); }
+        .nav-icon { font-size: 1.5rem; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <!-- Horní navigace -->
+    <nav class="top-nav shadow-sm">
+        <div class="nav-item active" id="nav-home" onclick="switchView('home')">
+            <span class="nav-icon">📖</span>
+            <span>Kuchařka</span>
+        </div>
+        <div class="nav-item relative" id="nav-list" onclick="switchView('list')">
+            <div class="relative">
+                <span class="nav-icon">🛒</span>
+                <!-- Odznak (Badge) s počtem položek -->
+                <span id="cart-badge" class="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center hidden shadow-sm">0</span>
+            </div>
+            <span>Nákupní seznam</span>
+        </div>
+    </nav>
+
+    <div class="max-w-2xl mx-auto space-y-8 mt-4">
+        
+        <header class="flex justify-between items-center glass-card rounded-3xl p-5 md:p-6">
+            <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-3 drop-shadow-sm">
+                <span class="text-3xl md:text-4xl">🍳</span> Chytrý kuchař
+            </h1>
+            <button id="theme-toggle" class="p-3 rounded-full bg-[var(--item-bg)] border border-[var(--item-border)] shadow hover:scale-110 transition-transform duration-300 flex items-center justify-center w-12 h-12 text-xl">
+                🌙
+            </button>
+        </header>
+
+        <!-- VIEW 1: KUCHAŘKA -->
+        <div id="view-home" class="space-y-8 transition-opacity duration-300">
+            <section class="glass-card rounded-3xl p-6 md:p-8">
+                
+                <div class="mb-6 flex justify-between items-end">
+                    <div class="w-full">
+                        <label for="recipe-search" class="block text-sm font-semibold mb-3 text-[var(--text-muted)] uppercase tracking-wider">Co budeme vařit?</label>
+                        <!-- VYCHYTÁVKA 1: Rychlé vyhledávání a Kolo štěstí -->
+                        <div class="flex gap-3 mb-3">
+                            <div class="relative flex-1">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+                                <input type="text" id="recipe-search" placeholder="Hledat recept nebo surovinu..." class="w-full pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-shadow shadow-sm">
+                            </div>
+                            <button onclick="openWheel()" class="glass-card flex items-center justify-center px-4 rounded-xl hover:scale-105 hover:border-[var(--primary)] transition-all text-2xl shadow-sm" title="Kolo štěstí - co uvařit ze zbytků">
+                                🎡
+                            </button>
+                        </div>
+                        <select id="recipe-select" class="w-full text-lg font-bold p-4 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-shadow shadow-sm cursor-pointer hover:border-orange-400">
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btn-delete-custom" class="text-red-500 text-sm font-medium hover:text-red-700 hidden mb-4">🗑️ Smazat tento vlastní recept</button>
+
+                <div class="flex items-center justify-between mt-2 bg-[var(--item-bg)] p-5 rounded-t-2xl border border-[var(--item-border)] border-b-0 shadow-inner">
+                    <label for="portions" class="font-semibold text-lg">Počet porcí:</label>
+                    <div class="flex items-center gap-4">
+                        <button id="btn-minus" class="w-12 h-12 rounded-full glass-card flex items-center justify-center text-2xl font-bold hover:text-[var(--primary)] hover:scale-105 transition-all">-</button>
+                        <input type="number" id="portions" min="1" max="50" class="w-16 text-center text-2xl font-bold bg-transparent border-none focus:ring-0 outline-none" readonly>
+                        <button id="btn-plus" class="w-12 h-12 rounded-full glass-card flex items-center justify-center text-2xl font-bold hover:text-[var(--primary)] hover:scale-105 transition-all">+</button>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between bg-[var(--item-bg)] p-4 rounded-b-2xl border border-[var(--item-border)] shadow-inner mb-2 bg-gradient-to-r from-[var(--item-bg)] to-orange-50 dark:to-orange-900/20">
+                    <div class="flex items-center gap-2 text-orange-500 font-bold text-xl">
+                        🔥 <span id="total-calories">0</span> kcal <span class="text-sm font-normal text-[var(--text-main)] ml-1">celkem</span>
+                    </div>
+                    <div class="text-sm font-medium text-[var(--text-muted)]">
+                        <span id="portion-calories">0</span> kcal / porce
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-card rounded-3xl p-6 md:p-8">
+                <div class="flex justify-between items-end mb-6 border-b border-[var(--item-border)] pb-4">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">🛒 Suroviny</h2>
+                    <span class="text-sm font-medium text-[var(--text-muted)] bg-[var(--item-bg)] px-3 py-1 rounded-full border border-[var(--item-border)] shadow-sm">Mám doma</span>
+                </div>
+                
+                <ul id="ingredients-list" class="space-y-3"></ul>
+
+                <button id="btn-generate-list" class="w-full mt-8 py-4 rounded-2xl font-bold text-white text-lg shadow-lg hover:shadow-orange-500/40 transition-all transform hover:-translate-y-1 duration-300 flex justify-center items-center gap-2" style="background-color: var(--primary)">
+                    <span>Přidat chybějící do seznamu</span>
+                </button>
+            </section>
+
+            <section class="glass-card rounded-3xl p-6 md:p-8 mb-12">
+                <div class="border-b border-[var(--item-border)] pb-4 mb-6">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">📖 Postup přípravy</h2>
+                </div>
+                <ol id="instructions-list" class="postup-list list-decimal pl-5 space-y-4 text-lg leading-relaxed text-[var(--text-main)] opacity-95"></ol>
+            </section>
+        </div>
+
+        <!-- VIEW 2: NÁKUPNÍ SEZNAM (Dříve přidat recept, nyní přesunut nákupní seznam) -->
+        <div id="view-list" class="hidden space-y-8 transition-opacity duration-300 mb-12">
+            <section class="glass-card rounded-3xl p-6 md:p-8 border-t-8 border-t-[var(--primary)]">
+                <div class="flex justify-between items-center mb-6 border-b border-[var(--item-border)] pb-4">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">📝 Můj nákup</h2>
+                    <button id="btn-clear-list" class="text-sm bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-3 py-1 rounded-full hover:bg-red-200 transition-colors font-semibold shadow-sm">Vymazat vše</button>
+                </div>
+
+                <div id="empty-state" class="text-center py-12 text-[var(--text-muted)] flex flex-col items-center gap-3 bg-[var(--item-bg)] rounded-2xl border border-[var(--item-border)]">
+                    <span class="text-5xl opacity-40">🛒</span>
+                    <span class="font-medium text-lg">Seznam je zatím prázdný.</span>
+                    <button onclick="switchView('home')" class="mt-4 text-[var(--primary)] font-semibold hover:underline">Zpět k receptům</button>
+                </div>
+
+                <ul id="shopping-list" class="space-y-3 mb-8 hidden"></ul>
+
+                <button id="btn-copy-list" class="w-full py-4 rounded-2xl font-bold bg-[var(--item-bg)] border-2 border-[var(--item-border)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all shadow-sm flex justify-center items-center gap-2 hidden">
+                    📋 Zkopírovat seznam textem
+                </button>
+            </section>
+        </div>
+
+    </div>
+
+    <script>
+        const builtinRecipes = [{"id": "spagety", "name": "🍝 Špagety Bolognese", "basePortions": 4, "caloriesPerPortion": 620, "ingredients": [{"name": "Mleté hovězí maso", "amount": 500, "unit": "g"}, {"name": "Špagety", "amount": 400, "unit": "g"}, {"name": "Cibule", "amount": 1, "unit": "ks"}, {"name": "Česnek", "amount": 3, "unit": "stroužky"}, {"name": "Krájená rajčata (konzerva)", "amount": 400, "unit": "g"}, {"name": "Olivový olej", "amount": 2, "unit": "lžíce"}, {"name": "Parmazán (vcelku)", "amount": 50, "unit": "g"}], "instructions": ["Cibuli i česnek oloupejte a nakrájejte velmi najemno. Do velkého hrnce nebo hlubší pánve nalijte olivový olej a zahřejte ho na střední stupeň.", "Přidejte nakrájenou cibuli a opékejte ji za stálého míchání asi 5 minut, dokud nezesklovatí a nezačne lehce zlátnout.", "Přidejte česnek a opékejte ještě zhruba 1 minutu, jen dokud se nerozvoní (pozor, aby nezhnědl, zhořkl by).", "Do pánve vložte mleté maso. Pomocí vařečky ho ihned začněte rozbíjet na co nejmenší kousky. Opékejte, dokud maso zcela nezhnědne a nepustí vlastní tuk (cca 8-10 minut).", "Až je maso orestované, přilijte konzervovaná rajčata. Plechovku vypláchněte troškou vody a přilijte také. Směs osolte (cca 1 lžička) a štědře opepřete čerstvě mletým pepřem.", "Stáhněte plamen na minimum, pánev přiklopte poklicí a nechte omáčku mírně probublávat. Duste alespoň 30 minut, ideálně klidně hodinu, aby se chutě krásně propojily. Občas zamíchejte.", "Asi 15 minut před koncem vaření omáčky dejte vařit velký hrnec vody. Až voda začne vřít, bohatě ji osolte (musí chutnat jako mořská voda) a vložte špagety.", "Špagety vařte podle návodu na obalu, aby zůstaly mírně tvrdé na skus (al dente). Poté je sceďte, ale neproplachujte vodou!", "Horké špagety ihned promíchejte s hotovou masovou omáčkou přímo v pánvi. Servírujte do hlubokých talířů a bohatě posypte čerstvě nastrouhaným parmazánem."]}, {"id": "palacinky", "name": "🥞 Sladké palačinky", "basePortions": 4, "caloriesPerPortion": 450, "ingredients": [{"name": "Hladká mouka", "amount": 200, "unit": "g"}, {"name": "Mléko", "amount": 500, "unit": "ml"}, {"name": "Vejce", "amount": 2, "unit": "ks"}, {"name": "Sůl", "amount": 1, "unit": "špetka"}, {"name": "Olej na smažení", "amount": 3, "unit": "lžíce"}, {"name": "Marmeláda nebo nutella", "amount": 4, "unit": "porce"}], "instructions": ["V hlubší míse rozklepněte obě vejce, přilijte zhruba polovinu mléka a přidejte špetku soli. Vše důkladně prošlehejte metličkou do pěny.", "Do tekuté směsi po částech přisypávejte odváženou hladkou mouku a ihned šlehejte, abyste zabránili vzniku hrudek.", "Až získáte husté a zcela hladké těstíčko, postupně vmíchejte zbytek mléka. Výsledné těsto by mělo mít konzistenci o něco hustší smetany.", "Zakryjte mísu utěrkou a nechte těsto alespoň 15-20 minut odpočinout při pokojové teplotě. Díky tomu nabobtná lepek a palačinky se nebudou trhat.", "Na palačinkovou pánev kápněte malé množství oleje (nebo ho rozetřete mašlovačkou) a pánev rozpalte na středně vysoký stupeň.", "Na pánev nalijte zhruba jednu naběračku těsta. Pánev ihned nakloňte krouživým pohybem tak, aby se těsto rovnoměrně rozlilo do tenké vrstvy po celé ploše.", "Opékejte zhruba 1 až 2 minuty, dokud okraje nezačnou zlátnout a na povrchu se netvoří bublinky. Poté palačinku tenkou obracečkou (nebo přehozením) otočte.", "Z druhé strany opékejte už jen krátce, přibližně 30-40 sekund. Hotovou palačinku přesuňte na talíř.", "Postup opakujte do spotřebování těsta. Před každou další palačinkou pánev jen zlehka potřete olejem, pokud je potřeba. Podávejte s oblíbenou marmeládou, nutellou nebo tvarohem."]}, {"id": "rizoto", "name": "🥘 Kuřecí rizoto", "basePortions": 4, "caloriesPerPortion": 580, "ingredients": [{"name": "Rýže Arborio (nebo Carnaroli)", "amount": 300, "unit": "g"}, {"name": "Kuřecí prsa", "amount": 400, "unit": "g"}, {"name": "Kuřecí vývar (horký)", "amount": 1000, "unit": "ml"}, {"name": "Parmazán", "amount": 60, "unit": "g"}, {"name": "Máslo", "amount": 50, "unit": "g"}, {"name": "Cibule", "amount": 1, "unit": "ks"}, {"name": "Bílé víno (suché)", "amount": 100, "unit": "ml"}], "instructions": ["Než začnete, připravte si do vedlejšího hrnce kuřecí vývar a udržujte ho po celou dobu vaření mírně horký na plotně vedle.", "Kuřecí prsa očistěte a nakrájejte na menší kostky. Zlehka je osolte a opepřete.", "V širokém hrnci (nebo hluboké pánvi) rozpusťte zhruba třetinu másla. Kuřecí maso na něm zprudka orestujte, aby se ze všech stran zatáhlo. Poté ho vyjměte na talíř a dejte stranou.", "Do stejného hrnce přidejte další kousek másla a vsypte velmi najemno nakrájenou cibuli. Orestujte ji na mírném ohni dosklovata (nesmí zhnědnout).", "Do hrnce k cibuli vsypte suchou, nepropláchnutou rýži Arborio. Zvyšte plamen na střední a za stálého míchání opékejte rýži nasucho asi 2 minuty, dokud zrnka nezačnou na okrajích průsvitnět.", "Rýži zalijte bílým vínem a míchejte, dokud se alkohol z vína téměř úplně neodpaří a nevsákne do rýže.", "Nyní začněte přidávat horký vývar. Přidejte vždy jednu naběračku vývaru a za stálého a pomalého míchání počkejte, až ji rýže zcela vsákne. Teprve pak přidejte další naběračku.", "Tento proces 'podlévání a míchání' opakujte přibližně 16-18 minut. Rýže začne pouštět škrob a rizoto bude postupně získávat krémovou konzistenci. Zrna musí zůstat uprostřed ještě trošku pevná (al dente).", "Když má rýže správnou konzistenci, stáhněte hrnec z ohně. Vmíchejte předem orestované kuřecí maso, zbylé studené máslo a nastrouhaný parmazán.", "Rizoto energicky promíchejte, aby se vytvořila ta správná krémová omáčka. Přikryjte poklicí a nechte 2 minuty odpočinout před podáváním. Servírujte do hlubokých talířů s extra parmazánem."]}, {"id": "svickova", "name": "🥩 Svíčková na smetaně", "basePortions": 6, "caloriesPerPortion": 820, "ingredients": [{"name": "Hovězí zadní (nebo falešná svíčková)", "amount": 800, "unit": "g"}, {"name": "Kořenová zelenina (mrkev, celer, petržel)", "amount": 500, "unit": "g"}, {"name": "Cibule", "amount": 2, "unit": "ks"}, {"name": "Smetana ke šlehání (33%)", "amount": 250, "unit": "ml"}, {"name": "Slanina (špek)", "amount": 100, "unit": "g"}, {"name": "Hovězí vývar", "amount": 500, "unit": "ml"}, {"name": "Hořčice plnotučná", "amount": 2, "unit": "lžíce"}, {"name": "Citron", "amount": 1, "unit": "ks"}, {"name": "Brusinkový kompot", "amount": 4, "unit": "lžíce"}, {"name": "Nové koření a bobkový list", "amount": 1, "unit": "špetka"}], "instructions": ["Slaninu nakrájejte na hrubší klínky a dejte je na chvíli do mrazáku, aby ztuhly. Očištěné maso prošpikujte nožem a do vzniklých otvorů vsuňte zmrzlé klínky slaniny. Maso pak důkladně osolte, opepřete a zavažte provázkem do válečku, aby drželo tvar.", "Kořenovou zeleninu a cibuli oloupejte a nakrájejte na kostičky. Ideální poměr zeleniny je cca 50% mrkve, 25% celeru a 25% petržele.", "Ve velkém a pevném hrnci rozehřejte sádlo nebo olej a prošpikované maso zprudka opečte ze všech stran dohněda, aby se zatáhlo. Následně maso z hrnce vyjměte na talíř.", "Do výpeku v hrnci nasypte kořenovou zeleninu a orestujte ji dotmava (trvá to i 10 minut). Až zelenina zkaramelizuje, přidejte nakrájenou cibuli a opékejte, dokud také nezhnědne.", "K orestovanému základu přidejte plnotučnou hořčici a zhruba minutu ji zarestujte. Zalijte trochou horkého vývaru a promíchejte.", "Vraťte do hrnce opečené maso. Přidejte divoké koření (do plátěného pytlíku nebo čajového vajíčka dejte bobkový list, nové koření a celý pepř). Podlijte zbytkem vývaru tak, aby maso bylo do dvou třetin ponořené.", "Hrnec přiklopte a duste na velmi mírném plameni, dokud není maso zcela měkké (podle druhu masa 2 až 3 hodiny). Alternativně můžete péct v troubě přiklopené při 160°C.", "Když je maso měkké, vyjměte ho a odstraňte provázek. Vyjměte i pytlík s kořením.", "Zbylou zeleninu s výpekem propasírujte přes síto, nebo pečlivě rozmixujte tyčovým mixérem úplně dohladka. Omáčku vraťte na plotnu a přiveďte k mírnému varu.", "Do jemné omáčky vmíchejte sladkou smetanu. Již nevařte klokotem! Omáčku finálně dochuťte solí, kapkou citronové šťávy a pokud je třeba, lžičkou cukru, aby měla dokonalou sladko-kyselo-slanou rovnováhu.", "Maso nakrájejte na plátky přes vlákno. Podávejte přelité horkou omáčkou, s domácím houskovým knedlíkem, plátkem citronu a lžičkou brusinek."]}, {"id": "gulas", "name": "🍲 Hovězí guláš", "basePortions": 4, "caloriesPerPortion": 690, "ingredients": [{"name": "Hovězí kližka", "amount": 600, "unit": "g"}, {"name": "Cibule", "amount": 600, "unit": "g"}, {"name": "Vepřové sádlo", "amount": 2, "unit": "lžíce"}, {"name": "Mletá sladká paprika", "amount": 2, "unit": "lžíce"}, {"name": "Hovězí vývar (nebo voda)", "amount": 700, "unit": "ml"}, {"name": "Česnek", "amount": 4, "unit": "stroužky"}, {"name": "Majoránka (sušená)", "amount": 1, "unit": "lžíce"}, {"name": "Rajský protlak", "amount": 1, "unit": "lžíce"}], "instructions": ["Základní pravidlo dobrého guláše zní: Kolik masa, tolik cibule (na váhu). Cibuli oloupejte a nakrájejte nahrubo. Hovězí kližku odblaňte jen zlehka (kolagen je důležitý pro zahuštění) a nakrájejte ji na větší kostky.", "Ve větším a silnostěnném hrnci rozehřejte vepřové sádlo. Vsypte cibuli a na mírném středním plameni ji opékejte dlouho a pomalu. Musí získat opravdu tmavě hnědou barvu, ale nesmí se spálit. Tento krok trvá i 20-30 minut.", "Když má cibule ideální karamelově hnědou barvu, vložte do hrnce nakrájené hovězí maso. Zvyšte trochu plamen a maso za stálého míchání restujte ze všech stran, dokud se nezáthne a nepustí vlastní šťávu.", "Přidejte lžíci rajského protlaku a orestujte ho zhruba 2 minuty. Poté hrnec stáhněte z ohně úplně stranou.", "Do hrnce vsypte mletou sladkou papriku. Mimo oheň rychle a důkladně promíchejte, aby se paprika rozvoněla, ale nepřipálila (okamžitě by zhořkla).", "Ihned podlijte zhruba polovinou horkého hovězího vývaru a vraťte hrnec na sporák.", "Obsah hrnce důkladně osolte, opepřete a přidejte špetku kmínu. Přiveďte k varu, poté plamen stáhněte na minimum, přiklopte poklicí a nechte pomalu probublávat a dusit.", "Duste pomalu 2 až 2,5 hodiny. Během dušení kontrolujte tekutinu a případně občas podlijte zbytkem horkého vývaru. Maso musí být na konci tak měkké, že se bude téměř rozpadat na lžíci.", "Zhruba 15 minut před koncem dušení rozemněte v dlaních majoránku a přidejte ji do hrnce spolu s prolisovaným česnekem.", "Kližka a cibule by měly guláš zahustit přirozeně samy. Pokud je ale omáčka příliš řídká, můžete ji zahustit chlebovou střídkou bez kůrky nebo troškou mouky rozmíchané ve studené vodě (pak je nutné provařit dalších 15 minut).", "Guláš je nejlepší odleželý do druhého dne. Podávejte ideálně s čerstvým chlebem nebo knedlíkem, posypaný čerstvou cibulí."]}, {"id": "bramboraky", "name": "🥔 Křupavé bramboráky", "basePortions": 4, "caloriesPerPortion": 520, "ingredients": [{"name": "Brambory (ideálně varný typ C)", "amount": 1000, "unit": "g"}, {"name": "Česnek", "amount": 5, "unit": "stroužků"}, {"name": "Vejce", "amount": 2, "unit": "ks"}, {"name": "Hladká mouka", "amount": 4, "unit": "lžíce"}, {"name": "Majoránka", "amount": 2, "unit": "lžíce"}, {"name": "Sádlo (nebo rostlinný olej na smažení)", "amount": 5, "unit": "lžic"}, {"name": "Sůl a pepř", "amount": 2, "unit": "špetky"}], "instructions": ["Brambory důkladně oloupejte a omyjte. Polovinu brambor nastrouhejte na hrubém struhadle (pro křupavost) a druhou polovinu na jemném struhadle (pro spojení těsta).", "Nastrouhané brambory dejte do mísy, jemně osolte a nechte asi 5 minut stát. Brambory pustí vodu.", "Po 5 minutách vezměte brambory po hrstech a opravdu velmi silně z nich vymačkejte veškerou uvolněnou škrobovou vodu. Suchou bramborovou hmotu přendávejte do čisté, suché mísy.", "K vymačkaným bramborám vyklepněte vejce, přidejte najemno prolisovaný česnek, lžičku soli, štědrou dávku černého pepře a v dlaních pečlivě rozemnutou majoránku.", "Přidejte hladkou mouku a vše vařečkou nebo rukou důkladně promíchejte v kompaktní těsto. Pokud je těsto i přes vymačkání vody stále moc řídké, přisypte ještě trochu mouky.", "Na kvalitní nepřilnavé pánvi nebo těžké litinové pánvi rozpalte větší množství sádla nebo oleje na středně vysokou teplotu. Bramboráky musí v tuku napůl plavat.", "Do rozpáleného tuku naberte lžící kopeček těsta, dejte ho na pánev a zadní stranou lžíce ho ihned rozetřete do tenké kulaté placičky.", "Smažte z jedné strany asi 3-4 minuty, dokud okraje nezezlátnou a placka se sama neodlepí od dna. Poté placku obracečkou otočte a dosmažte dokřupava i z druhé strany (asi 2-3 minuty).", "Usmažené bramboráky skládejte na talíř vyložený papírovými kuchyňskými utěrkami, aby se odsál přebytečný tuk.", "Podávejte ihned, dokud jsou ještě horké a křupavé. Můžete jíst jen tak samotné, nebo s uzeným masem a zelím."]}, {"id": "knedliky", "name": "🍓 Kynuté ovocné knedlíky", "basePortions": 4, "caloriesPerPortion": 650, "ingredients": [{"name": "Hrubá mouka", "amount": 500, "unit": "g"}, {"name": "Vlažné mléko", "amount": 250, "unit": "ml"}, {"name": "Čerstvé droždí", "amount": 20, "unit": "g"}, {"name": "Vejce", "amount": 1, "unit": "ks"}, {"name": "Cukr", "amount": 1, "unit": "lžíce"}, {"name": "Ovoce (jahody, meruňky, švestky)", "amount": 400, "unit": "g"}, {"name": "Tvrdý tvaroh na strouhání", "amount": 100, "unit": "g"}, {"name": "Máslo", "amount": 50, "unit": "g"}], "instructions": ["Mléko mírně ohřejte, aby bylo vlažné (nesmí být horké, zabilo by kvasinky). Odlijte asi 100 ml do hrnečku. Do hrnečku rozdrobte čerstvé droždí, přidejte lžíci cukru a lžíci mouky. Rozmíchejte na řídkou kašičku a nechte na teplém místě cca 10-15 minut vzejít kvásek (začne tvořit bohatou pěnu).", "Do velké zadělávací mísy prosejte zbylou hrubou mouku. Uprostřed udělejte důlek, do něj vyklepněte vejce, přidejte špetku soli, zbylé vlažné mléko a nakonec vlijte vzešlý aktivní kvásek.", "Začněte těsto vypracovávat vařečkou nebo hákem v kuchyňském robotu. Hněťte ho tak dlouho, dokud není zcela hladké, nelepí se na stěny mísy a tvoří se na něm puchýře (trvá to cca 8-10 minut).", "Vypracované těsto poprašte zlehka moukou, mísu přikryjte čistou utěrkou a nechte na teplém místě bez průvanu kynout asi 45 až 60 minut, dokud nezdvojnásobí svůj objem.", "Během kynutí si očistěte a omyjte ovoce. Pokud používáte velké meruňky nebo švestky, můžete je vypeckovat, jahody nechte vcelku.", "Vykynuté těsto vyklopte na pomoučený vál. Lžící z něj odkrajujte přibližně stejně velké kousky. Každý kousek v dlani nebo válečkem roztáhněte na placičku.", "Doprostřed každé placičky položte ovoce. Těsto kolem ovoce pečlivě a pevně uzavřete, aby při vaření šťáva nevytekla. Zakoulejte do úhledného knedlíku.", "Hotové zabalené knedlíky vyskládejte na vál, přikryjte je utěrkou a nechte ještě asi 10-15 minut takzvaně dokynout.", "V širokém kastrolu přiveďte k varu osolenou vodu. Vkládejte do ní knedlíky (ne moc najednou, protože vařením nabudou). Vařte je asi 8-10 minut (podle velikosti a druhu ovoce). V polovině vaření knedlíky otočte vařečkou.", "Uvařené knedlíky vytahujte děrovanou naběračkou a každý knedlík ihned dvakrát propíchejte vidličkou, aby z něj vyšla pára a nesrazil se (nezdrcnul).", "Knedlíky podávejte ihned na talíři, štědře posypané nastrouhaným tvrdým tvarohem, moučkovým cukrem a přelité horkým rozpuštěným máslem."]}, {"id": "caesar", "name": "🥗 Caesar salát s kuřecím", "basePortions": 2, "caloriesPerPortion": 480, "ingredients": [{"name": "Římský salát", "amount": 1, "unit": "hlávka"}, {"name": "Kuřecí prsa", "amount": 300, "unit": "g"}, {"name": "Bílý chléb (nebo toustový na krutony)", "amount": 2, "unit": "krajíce"}, {"name": "Kvalitní majonéza", "amount": 3, "unit": "lžíce"}, {"name": "Sardelové řezy (ančovičky)", "amount": 2, "unit": "ks"}, {"name": "Česnek", "amount": 1, "unit": "stroužek"}, {"name": "Parmazán", "amount": 50, "unit": "g"}, {"name": "Citron", "amount": 1, "unit": "ks"}], "instructions": ["Nejprve si připravte domácí krutony. Starší bílý chléb nebo toustový chléb nakrájejte na rovnoměrné menší kostičky.", "Kostičky chleba dejte na plech, zlehka je pokapejte olivovým olejem a opečte v troubě rozehřáté na 180°C dorůžova a křupava (cca 10 minut). Nechte je zcela vychladnout.", "Kuřecí prsa rozkrojte podélně na plátky, aby se rychleji a rovnoměrně propekla. Osolte je, opepřete a zakápněte troškou olivového oleje.", "Rozpalte pánev. Kuřecí maso opékejte zprudka z každé strany zhruba 3-4 minuty, dokud nemá krásně zlatavou kůrčičku a není uvnitř propečené. Maso přendejte na prkénko a nechte ho pár minut odpočívat, pak nakrájejte na plátky.", "Nyní připravte dresink: Do úzké nádoby mixéru (nebo hmoždíře) vložte oloupaný stroužek česneku a ančovičky. Rozmixujte (nebo rozetřete) je na jemnou pastu.", "K pastě přidejte 3 lžíce majonézy, polévkovou lžíci citronové šťávy a lžíci velmi najemno nastrouhaného parmazánu. Vše důkladně promíchejte do kompaktního dresinku. Podle chuti dolaďte troškou čerstvě mletého pepře (sůl většinou není třeba díky ančovičkám a sýru).", "Hlávku římského salátu důkladně omyjte pod studenou vodou a osušte. Odstraňte povadlé vrchní listy. Salát nakrájejte na hrubší pásy nebo ho natrhejte rukama do velké mísy.", "Připravený dresink nalijte na listy salátu a rukama nebo dvěma lžícemi velmi jemně, ale důkladně promíchejte. Dbejte na to, aby byl každý kousek listu obalený tenkou vrstvou dresinku.", "Ochucený salát přendejte na servírovací talíře. Navrch poklaďte plátky teplého kuřecího masa.", "Na závěr salát posypte připravenými křupavými krutony a pomocí škrabky na brambory vytvořte navrch velké hobliny zbylého parmazánu. Ihned podávejte."]}, {"id": "guacamole", "name": "🥑 Guacamole s nachos", "basePortions": 4, "caloriesPerPortion": 350, "ingredients": [{"name": "Zralé avokádo (druh Hass)", "amount": 3, "unit": "ks"}, {"name": "Červená cibule", "amount": 0.5, "unit": "ks"}, {"name": "Rajče", "amount": 1, "unit": "ks"}, {"name": "Čerstvý koriandr", "amount": 1, "unit": "hrst"}, {"name": "Limetka", "amount": 1, "unit": "ks"}, {"name": "Jalapeňo paprička (nebo malá chilli)", "amount": 0.5, "unit": "ks"}, {"name": "Kukuřičné nachos (chipsy)", "amount": 1, "unit": "balení"}], "instructions": ["Základem úspěchu jsou dokonale zralá avokáda. Avokáda podélně rozkrojte obkroužením kolem pecky. Pootočením obou polovin od sebe je otevřete. Do pecky sekněte nožem a vytočte ji ven.", "Pomocí polévkové lžíce vydlabejte měkkou zelenou dužinu ze slupky přímo do širší mělké misky.", "Okamžitě přes avokádo vymačkejte šťávu z poloviny limetky. To zabrání rychlé oxidaci a zhnědnutí avokáda.", "Pomocí vidličky avokádo hrubě rozmačkejte. Nesnažte se z něj udělat hladkou kaši, pravé guacamole má obsahovat menší kousky avokáda, musí mít texturu.", "Červenou cibuli oloupejte a nakrájejte ji na naprosto minimální, průsvitné kostičky. Přidejte k avokádu.", "Rajče rozkrojte, pomocí lžičky odstraňte vodnatý střed se semínky (ten by dip příliš zředil). Pevnou dužinu rajčete nakrájejte na drobné kostičky a přihoďte do misky.", "Jalapeňo papričku zbavte semínek (pokud nechcete dip extra pálivý) a nakrájejte ji na mikroskopické kousky. Čerstvý koriandr včetně stonků nasekejte nahrubo.", "Papričku i koriandr nasypte k avokádu. Vše jemně promíchejte vidličkou.", "Důkladně osolte hrubozrnnou solí. Ochutnejte a podle potřeby přikyselte zbylou šťávou z limetky. Guacamole musí být svěží, lehce slané a pikantní.", "Podávejte nejlépe okamžitě, uprostřed stolu, s velkou miskou solených kukuřičných nachos chipsů."]}, {"id": "losos", "name": "🐟 Pečený losos se zeleninou", "basePortions": 2, "caloriesPerPortion": 460, "ingredients": [{"name": "Filet lososa (s kůží)", "amount": 400, "unit": "g"}, {"name": "Brambory", "amount": 400, "unit": "g"}, {"name": "Mrkev", "amount": 2, "unit": "ks"}, {"name": "Cuketa", "amount": 1, "unit": "ks"}, {"name": "Olivový olej", "amount": 3, "unit": "lžíce"}, {"name": "Čerstvý kopr nebo tymián", "amount": 1, "unit": "hrst"}, {"name": "Citron", "amount": 1, "unit": "ks"}], "instructions": ["Troubu předehřejte na 200 °C (ideálně program horkovzduch). Velký plech vyložte pečicím papírem.", "Brambory a mrkev oloupejte. Cuketu nechte i se slupkou. Brambory nakrájejte na menší měsíčky, mrkev na kolečka a cuketu na hrubší kostky (cuketa se peče rychleji, proto musí být kousky větší).", "Zeleninu rovnoměrně rozprostřete na připravený plech. Štědře zakápněte dvěma lžícemi olivového oleje, osolte, přidejte čerstvě mletý pepř a promněte bylinky (tymián). Rukama vše na plechu promíchejte, aby byla zelenina olejem potažená.", "Plech vložte do vyhřáté trouby a pečte samotnou zeleninu asi 20 minut.", "Mezitím si připravte filety z lososa. Omyjte je pod studenou vodou, osušte papírovou utěrkou a prstem přejeďte po masu, zda nezůstaly kosti (případně je vytáhněte pinzetou). Maso mírně nařízněte zespodu na kůži.", "Z vrchu lososa osolte, opepřete a zlehka pokapejte šťávou z poloviny citronu a zbylou lžící oleje.", "Po 20 minutách vytáhněte plech se zeleninou z trouby. Zeleninu obracečkou trochu promíchejte a udělejte uprostřed místo.", "Do uvolněného středu na plechu položte filety lososa stranou s kůží dolů.", "Vraťte plech do trouby a pečte společně dalších 12 až 15 minut. Záleží na tloušťce filetu. Losos by měl být na povrchu propečený a světle růžový, ale uvnitř stále mírně průsvitný a šťavnatý.", "Hotového lososa ihned podávejte s upečenou zeleninou, posypané čerstvým nasekaným koprem. K porci vždy servírujte klínek zbylého citronu na dochucení přímo na talíři."]}, {"id": "smazak", "name": "🧀 Smažený sýr s tatarkou", "basePortions": 2, "caloriesPerPortion": 950, "ingredients": [{"name": "Eidam 30% (v celku)", "amount": 300, "unit": "g"}, {"name": "Brambory", "amount": 500, "unit": "g"}, {"name": "Vejce", "amount": 2, "unit": "ks"}, {"name": "Strouhanka (kvalitní)", "amount": 100, "unit": "g"}, {"name": "Hladká mouka", "amount": 50, "unit": "g"}, {"name": "Tatarská omáčka", "amount": 100, "unit": "g"}, {"name": "Olej na smažení", "amount": 150, "unit": "ml"}, {"name": "Sůl, máslo, pažitka na brambory", "amount": 1, "unit": "špetka"}], "instructions": ["Jako první dejte vařit přílohu. Brambory oloupejte, nakrájejte na rovnoměrné kostky, propláchněte a dejte vařit do středního hrnce s vodou. Vodu osolte a vařte doměkka (asi 15-20 minut).", "Blok Eidamu si podélně nakrájejte na plátky široké zhruba 1,5 až 2 centimetry. Sýr 30% tuku je ideální, neroztéká se v pánvi tak rychle jako tučnější sýry.", "Připravte si trojobal: Do prvního hlubokého talíře nasypte hladkou mouku. Do druhého rozklepněte vejce, přidejte lžíci mléka nebo piva a důkladně rozšlehejte vidličkou. Do třetího nasypte strouhanku.", "Postupně každý plátek sýra obalte ve všech třech talířích: Nejprve pečlivě v mouce, pak ho ponořte do vejce a nakonec důkladně obalte ve strouhance.", "Zlaté pravidlo, aby sýr na pánvi nevytekl: Obalte sýr DVOJITĚ. Znamená to, že plátek, který už má na sobě strouhanku, znovu ponořte do vajíčka a znovu obalte ve strouhance. Pozornost věnujte hlavně okrajům sýra.", "Na pánvi rozpalte dostatečné množství oleje (alespoň 1-2 centimetry výšky). Tuk musí být opravdu velmi dobře rozpálený, aby se obal hned zatáhl.", "Opatrně vložte obalené sýry do rozpáleného oleje. Smažte zprudka z jedné strany zhruba 1-2 minuty, dokud není strouhanka zlatohnědá.", "Sýr velmi rychle, ale opatrně otočte obracečkou (nepíchejte do něj vidličkou!) a osmažte dozlatova i z druhé strany.", "Zlatavý sýr okamžitě přendejte na ubrousek, který odsaje přebytečný tuk.", "Uvařené brambory sceďte, vhoďte na ně plátek másla a posypte nasekanou pažitkou nebo petrželí. Sýr servírujte s horkými bramborami a poctivou tatarskou omáčkou."]}, {"id": "tiramisu", "name": "☕ Pravé italské Tiramisu", "basePortions": 6, "caloriesPerPortion": 420, "ingredients": [{"name": "Mascarpone (vychlazené)", "amount": 500, "unit": "g"}, {"name": "Cukrářské dlouhé piškoty (Savoiardi)", "amount": 200, "unit": "g"}, {"name": "Čerstvá vejce (vel. M)", "amount": 4, "unit": "ks"}, {"name": "Cukr krupice", "amount": 4, "unit": "lžíce"}, {"name": "Silná černá káva (espresso)", "amount": 200, "unit": "ml"}, {"name": "Likér Amaretto (volitelně)", "amount": 2, "unit": "lžíce"}, {"name": "Kvalitní holandské kakao", "amount": 2, "unit": "lžíce"}], "instructions": ["Tento dezert je bez tepelné úpravy, je proto absolutně zásadní použít co nejčerstvější a omytá vejce.", "Připravte si silnou kávu, ideálně dvojité espresso, prodloužené trochou horké vody do hrnečku. Nechte ji zcela vychladnout na pokojovou teplotu a poté do ní vmíchejte 2 lžíce likéru Amaretto. Kávu přelijte do mělkého hlubšího talíře.", "Vejce rozklepněte a velmi pečlivě oddělte žloutky od bílků do dvou samostatných velkých mís.", "K žloutkům přidejte krupicový cukr. Pomocí elektrického šlehače je šlehejte na nejvyšší obrátky tak dlouho, dokud nevznikne velmi světlá, téměř bílá a nadýchaná hutná pěna (trvá to asi 5 minut).", "Do žloutkové pěny začněte přidávat mascarpone. Zašlehávejte ho velmi pomalu na nejnižší otáčky, nebo ještě lépe ho do pěny zabalte jen pomocí silikonové stěrky. Zabráníte tím sražení sýru.", "Do mísy s bílky přidejte malou špetku soli. Čistými metlami vyšlehejte bílky do tuhého a pevného sněhu (nesmí z mísy vypadnout, když ji otočíte dnem vzhůru).", "Sníh z bílků nyní po třetinách a extrémně zlehka vmíchejte do sýrového krému pomocí stěrky takzvaným 'zabalováním'. Vzduch v bílcích zaručí nadýchanost krému.", "Připravte si obdélníkovou misku nebo pekáček. Cukrářské piškoty uchopte, na jedinou vteřinu je velmi zlehka položte stranou bez cukru do vychladlé kávy (nesmí kávu nasát úplně, rozmočily by se!) a skládejte je těsně vedle sebe na dno misky.", "Jakmile máte první patro z piškotů, rovnoměrně na něj rozetřete polovinu hotového krému.", "Položte druhou vrstvu kávou navlhčených piškotů. Tentokrát je můžete zkusit pokládat křížem na předchozí vrstvu. Navrch rozetřete zbytek krému a uhlaďte povrch.", "Tiramisu přikryjte potravinářskou fólií a dejte chladit do lednice. Zásadní krok - dezert se musí chladit minimálně 4 hodiny, ideálně přes celou noc, aby piškoty změkly a chutě se prolnuly.", "Těsně před podáváním posypte povrch dezertu přes jemné sítko bohatou vrstvou tmavého kakaa."]}, {"id": "rajska", "name": "🍅 Rajská omáčka s hovězím", "basePortions": 4, "caloriesPerPortion": 610, "ingredients": [{"name": "Hovězí maso (plec nebo zadní)", "amount": 500, "unit": "g"}, {"name": "Rajský protlak (hustý)", "amount": 150, "unit": "g"}, {"name": "Cibule", "amount": 1, "unit": "ks"}, {"name": "Cukr", "amount": 3, "unit": "lžíce"}, {"name": "Hovězí vývar z masa", "amount": 800, "unit": "ml"}, {"name": "Máslo", "amount": 50, "unit": "g"}, {"name": "Hladká mouka", "amount": 3, "unit": "lžíce"}, {"name": "Nové koření, celý pepř, bobkový list", "amount": 1, "unit": "hrstka"}, {"name": "Ocet", "amount": 1, "unit": "lžíce"}], "instructions": ["Celý kus hovězího masa osolte, vložte do velkého hrnce s vodou a přidejte koření (5 kuliček nového koření, 10 kuliček pepře, 2 bobkové listy). Vařte na velmi mírném ohni doměkka (2-3 hodiny podle typu masa). Získáte tak dokonalý vývar jako základ pro omáčku. Uvařené maso dejte stranou.", "Ve středním hrnci rozpusťte máslo a na něm orestujte velmi najemno nakrájenou cibuli. Restujte, dokud cibule nezesklovatí.", "Cibuli zasypte hladkou moukou a za stálého míchání opražte do vzniku velmi světlé zlatavé jíšky (cca 2 minuty).", "Do jíšky přidejte cukr a nechte ho za stálého míchání asi minutu lehce zkaramelizovat.", "Přidejte rajský protlak. Tento krok je velmi důležitý: Protlak musíte v hrnci restovat s jíškou asi 1-2 minuty na středním plameni. Ztratí tím svoji kyselost a získá plnou nasládlou chuť.", "Základ zalijte scezeným vývarem, který jste získali vařením hovězího masa (nejlépe by měl být vývar horký). Zpočátku vlijte jen část, důkladně rozmíchejte metličkou všechny hrudky, a pak dolijte zbytek.", "Přidejte špetku skořice, případně i badyán pro specifickou vůni. Omáčku nechte vařit na mírném ohni alespoň 20 minut. Mouka se musí dokonale provařit a ztratit syrovou chuť.", "Na závěr vaření omáčku ochutnejte. Nyní je čas doladit tu pravou rovnováhu. Přidejte lžíci octa, sůl a pokud je třeba i cukr. Rajská omáčka musí být primárně nasládlá.", "Většina lidí má ráda rajskou omáčku hladkou. Před podáváním ji tedy propasírujte přes jemné sítko, abyste odstranili případné kousky cibule a koření.", "Uvařené hovězí maso nakrájejte na tenké plátky. Podávejte přelité horkou rajskou omáčkou. Jako ideální příloha slouží těstoviny (kolínka) nebo kynutý houskový knedlík."]}, {"id": "veproknedlo", "name": "🥩 Vepřo knedlo zelo", "basePortions": 4, "caloriesPerPortion": 880, "ingredients": [{"name": "Vepřová krkovice nebo bůček", "amount": 800, "unit": "g"}, {"name": "Kysané zelí", "amount": 500, "unit": "g"}, {"name": "Cibule", "amount": 2, "unit": "ks"}, {"name": "Česnek", "amount": 4, "unit": "stroužky"}, {"name": "Kmín drcený", "amount": 1, "unit": "lžička"}, {"name": "Bramborový nebo houskový knedlík", "amount": 1, "unit": "balení"}, {"name": "Sádlo", "amount": 1, "unit": "lžíce"}], "instructions": ["Troubu předehřejte na 180°C. Vepřové maso nakrájejte na větší kusy (zhruba velikosti pěsti). Důkladně je osolte, opepřete a posypte drceným kmínem ze všech stran.", "Česnek prolisujte, smíchejte ho s troškou soli a touto pastou zlehka potřete všechny kousky masa.", "Do pekáče vložte lžíci sádla a nahrubo nakrájenou cibuli. Na ni rozložte připravené maso.", "Maso podlijte na dně trochou horké vody. Pekáč přiklopte víkem (nebo překryjte alobalem) a vložte do vyhřáté trouby. Pečte přiklopené cca 1 až 1,5 hodiny doměkka.", "Během pečení se vrhněte na zelí. Pokud je zakoupené kysané zelí příliš kyselé, propláchněte ho vodou a vymačkejte.", "V hrnci na sádle zpěňte jednu menší najemno nakrájenou cibuli. Přidejte okapané zelí. Zlehka ho osmahněte, podlijte trochou vody, přidejte špetku kmínu a lžíci cukru.", "Zelí duste pod pokličkou doměkka (zhruba 20-30 minut). Pokud máte rádi zelí zahuštěné, můžete ho na závěr poprášit troškou hladké mouky nebo nastrouhanou syrovou bramborou a 10 minut provařit.", "Po hodině a půl pečení odklopte víko pekáče u masa. Plamen (teplotu) můžete zvýšit na 200°C. Maso přelijte vlastním výpekem z pekáče a nechte ho odkryté dopéct dalších cca 20-30 minut, dokud nezíská krásnou, zlatavou a křupavou kůrčičku. Výpek na dně pekáče zredukujte - vznikne tak silná omáčka.", "Knedlíky ohřejte nad párou nebo velmi krátce v mikrovlnce nakrájené na plátky.", "Servírujte plátky knedlíků, na ně navrstvěte voňavé zelí a na něj posaďte upečené kusy masa. Vše štědře a bez výčitek přelijte zredukovaným vypečeným sádlem a šťávou z pekáče."]}, {"id": "tunakovysalat", "name": "🐟 Těstovinový salát s tuňákem", "basePortions": 4, "caloriesPerPortion": 410, "ingredients": [{"name": "Těstoviny (vřetena, penne)", "amount": 400, "unit": "g"}, {"name": "Tuňák v konzervě (ve vlastní šťávě)", "amount": 200, "unit": "g"}, {"name": "Kukuřice z konzervy", "amount": 150, "unit": "g"}, {"name": "Červená cibule", "amount": 1, "unit": "ks"}, {"name": "Majonéza", "amount": 3, "unit": "lžíce"}, {"name": "Bílý jogurt", "amount": 4, "unit": "lžíce"}, {"name": "Citronová šťáva", "amount": 1, "unit": "lžíce"}, {"name": "Kyselá okurka", "amount": 2, "unit": "ks"}], "instructions": ["V dostatečném množství dobře osolené vařící vody uvařte těstoviny. Pro salát je naprosto ideální, aby byly těstoviny tvrdší 'al dente', protože v dresinku ještě mírně změknou. Po uvaření je slijte do cedníku, propláchněte studenou vodou (zastavíte tak var) a nechte je okapat a úplně zchladnout.", "Červenou cibuli a kyselé okurky nakrájejte na ty nejmenší možné kostičky. Z konzervy tuňáka a z kukuřice slijte pečlivě veškerý tekutý nálev.", "Ve velké salátové míse si připravte krémový dresink: Smíchejte bílý jogurt, majonézu, lžíci citronové šťávy a lžičku láku ze slitých okurek pro pikantnější chuť. Důkladně osolte a opepřete čerstvým černým pepřem.", "Do hotového dresinku vložte najemno nakrájenou zeleninu a okapanou kukuřici s tuňákem. Tuňáka můžete zlehka vidličkou rozebrat na menší kousky.", "Nakonec do mísy přisypte zcela studené těstoviny. Vše za pomoci dvou lžic velmi zlehka a důkladně promíchejte.", "Salát zakryjte a dejte před konzumací vychladit do lednice alespoň na hodinu. Chutě se propojí a salát bude mnohem lepší.", "Před podáváním salát ještě jednou promíchejte, ochutnejte a případně dosolte. Skvěle chutná posypaný čerstvou petrželkou."]}, {"id": "hokkaido", "name": "🎃 Krémová polévka Hokkaido", "basePortions": 4, "caloriesPerPortion": 280, "ingredients": [{"name": "Dýně Hokkaido (menší)", "amount": 1, "unit": "ks"}, {"name": "Cibule", "amount": 1, "unit": "ks"}, {"name": "Zeleninový vývar (nebo voda)", "amount": 800, "unit": "ml"}, {"name": "Smetana na vaření", "amount": 150, "unit": "ml"}, {"name": "Máslo", "amount": 1, "unit": "lžíce"}, {"name": "Dýňová nebo slunečnicová semínka", "amount": 2, "unit": "lžíce"}, {"name": "Muškátový oříšek, zázvor", "amount": 1, "unit": "špetka"}], "instructions": ["Dýně Hokkaido jako jediná nepotřebuje loupat! Dýni pouze důkladně omyjte pod tekoucí vodou. Rozkrojte ji napůl a polévkovou lžící vydlabejte ze středu měkká vlákna se semínky. Zbytek čisté dužiny i se slupkou nakrájejte na menší kostky.", "V polévkovém hrnci rozehřejte lžíci másla a trošku oleje. Vsypte hrubě nakrájenou cibuli a orestujte ji do světle zlaté barvy.", "K orestované cibuli přidejte kostky dýně. Na mírném ohni vše zarestujte asi 5 minut. Dýně pustí barvu, zlehka se oteče a získá intenzivnější chuť. Zlehka osolte a přidejte mletý zázvor a čerstvě nastrouhaný muškátový oříšek.", "Celý základ zalijte horkým zeleninovým vývarem, ale opatrně! Vody by mělo být jen tolik, aby byly kostky dýně těsně ponořené, jinak bude polévka příliš řídká.", "Hrnec přiklopte poklicí, přiveďte k mírnému varu a vařte zhruba 15-20 minut. Dýně i se slupkou musí být naprosto měkká (rozpadá se po píchnutí vidličkou).", "Odstavte hrnec ze sporáku. Tyčovým mixérem polévku pečlivě a dlouho mixujte do zcela hladkého sametového krému bez kousků.", "Do rozmixovaného krému vlijte smetanu a polévku už jen prohřejte (nevařte). Ochutnejte a dolaďte podle vlastních preferencí solí a pepřem.", "Na suché malé pánvičce krátce opražte dýňová semínka (dokud nezačnou praskat a vonět).", "Polévku servírujte horkou. V talíři ji ozdobte opraženými semínky, lžičkou zakysané smetany a ideálně kápněte tmavý dýňový olej."]}, {"id": "kvetak", "name": "🥦 Květákový mozeček", "basePortions": 2, "caloriesPerPortion": 340, "ingredients": [{"name": "Květák", "amount": 1, "unit": "menší hlávka"}, {"name": "Vejce", "amount": 4, "unit": "ks"}, {"name": "Cibule", "amount": 1, "unit": "ks"}, {"name": "Máslo", "amount": 30, "unit": "g"}, {"name": "Čerstvá pažitka nebo petrželka", "amount": 1, "unit": "hrst"}, {"name": "Sůl a pepř", "amount": 1, "unit": "špetka"}, {"name": "Vařené brambory (příloha)", "amount": 400, "unit": "g"}], "instructions": ["Květák omyjte a rozeberte ho nebo nožem odřízněte na menší růžičky. Košťál můžete využít do polévky.", "V hrnci přiveďte k varu vodu, osolte ji a vhoďte do ní květákové růžičky. Vařte zhruba 8-10 minut. Květák musí být měkký na skus, ale nesmí to být kaše.", "Květák sceďte a nechte chvíli okapat. Následně ho nožem nasekejte najemno (jako byste krájeli bylinky).", "V široké pánvi rozpusťte kvalitní máslo (to udělá většinu chuti). Přidejte nadrobno nakrájenou cibuli a orestujte ji do zlatova.", "K cibuli přisypte nasekaný květák a za občasného míchání ho orestujte dalších pár minut, aby získal barvu a lehce oříškovou chuť. Do pánve nasypte špetku soli, hrubě mletý pepř a případně trošku drceného kmínu.", "V misce vedle si rozšlehejte vejce. Rozšlehaná vejce vlijte do pánve ke květáku.", "Na nízkém plameni neustále směs odspodu promíchávejte obracečkou. Jakmile vajíčka začnou tuhnout a tvořit měkké, krémové kousky, okamžitě pánev stáhněte ze sporáku! Nesmíte vajíčka vysušit, mozeček musí zůstat vláčný.", "Hotový květákový mozeček ihned posypte nasekanou pažitkou.", "Tradičně se podává s horkými vařenými bramborami a kyselou okurkou nebo rajčatovým salátem."]}, {"id": "palacinky_spenat", "name": "🥞 Palačinky se špenátem a sýrem", "basePortions": 3, "caloriesPerPortion": 490, "ingredients": [{"name": "Těsto na palačinky (nesladké, základní)", "amount": 1, "unit": "dávka"}, {"name": "Čerstvý listový špenát (nebo mražený listový)", "amount": 300, "unit": "g"}, {"name": "Česnek", "amount": 2, "unit": "stroužky"}, {"name": "Ricotta nebo sýr Lučina", "amount": 200, "unit": "g"}, {"name": "Strouhaný sýr (Gouda, Čedar)", "amount": 100, "unit": "g"}, {"name": "Smetana na vaření", "amount": 100, "unit": "ml"}, {"name": "Máslo", "amount": 1, "unit": "lžíce"}], "instructions": ["Z mouky, vajec a mléka udělejte těsto na palačinky, ovšem do těsta dejte jen sůl, žádný cukr. Na pánvi s kapkou oleje usmažte 6 tenkých, nesladkých palačinek a dejte je stranou.", "Troubu dejte rozehřát na 200 °C.", "Příprava náplně: Ve větším hrnci nebo pánvi rozpusťte kousek másla. Vhoďte prolisovaný česnek, nechte ho jen zasyčet a ihned přidejte všechen špenát. Krátce poduste, dokud špenát nezavadne a neztratí objem (stačí minuta). Nechte ho okapat a vychladnout.", "Z vychladlého špenátu rukou velmi pečlivě vymačkejte všechnu přebytečnou vodu. Poté špenát překrájejte nahrubo nožem.", "Nasekaný špenát dejte do mísy a smíchejte ho s ricottou (nebo lučinou). Směs poctivě osolte a vydatně opepřete.", "Každou připravenou palačinku rozložte, doprostřed nandejte špenátovo-sýrovou náplň a rovnoměrně ji rozetřete.", "Palačinku pevně zarolujte a vložte ji do předem lehce vymazané zapékací formy. Palačinky skládejte těsně vedle sebe.", "Skládané palačinky ve formě přelijte smetanou na vaření a navrch štědře a rovnoměrně nasypte strouhaný tvrdý sýr.", "Vložte zapékací formu do rozehřáté trouby. Zapečte zhruba 15 až 20 minut, dokud se sýr na povrchu neroztaví a neudělá zlatohnědou křupavou kůrku.", "Podávejte ihned po vytažení z trouby, nejlépe s lehkým zeleninovým salátem."]}, {"id": "francouzske_brambory", "name": "🇫🇷 Francouzské brambory", "basePortions": 4, "caloriesPerPortion": 620, "ingredients": [{"name": "Brambory varný typ A nebo B", "amount": 1000, "unit": "g"}, {"name": "Uzené maso, kvalitní klobása nebo špekáčky", "amount": 300, "unit": "g"}, {"name": "Vejce uvařená natvrdo", "amount": 3, "unit": "ks"}, {"name": "Vejce syrová (do zálivky)", "amount": 2, "unit": "ks"}, {"name": "Smetana ke šlehání 33% (nebo mléko)", "amount": 200, "unit": "ml"}, {"name": "Cibule", "amount": 1, "unit": "ks"}, {"name": "Sádlo na vymazání pekáče", "amount": 1, "unit": "lžíce"}], "instructions": ["Omyté brambory dejte vařit i se slupkou do hrnce se slanou vodou. Vařte zhruba 15-20 minut (podle velikosti) - nemusí být úplně měkké, v troubě dojdou. Mezitím dejte vařit i tři vejce natvrdo (10 minut).", "Uvařené brambory i vejce slijte, zchlaďte studenou vodou, oloupejte a obojí nakrájejte na rovnoměrné plátky (kolečka) silné asi půl centimetru.", "Připravte si ostatní suroviny: Uzené maso či uzeninu nakrájejte na malé kostičky nebo kolečka. Cibuli nakrájejte na tenká půlkolečka.", "Hluboký pekáč nebo zapékací mísu poctivě vymažte sádlem. Na dno vyskládejte pevnou a těsnou vrstvu plátků brambor, tak aby dno neprosvítalo.", "První vrstvu brambor nezapomeňte osolit a opepřit.", "Na brambory rozložte nakrájené uzené maso a zasypte ho nakrájenou cibulí.", "Na cibuli a maso vyskládejte vrstvu koleček z uvařených vajec.", "Vše zakryjte finální vrstvou plátků brambor, podobně jako skládáte střešní tašky. Tuto vrchní vrstvu znovu osolte.", "V hrnečku vidličkou důkladně rozšlehejte smetanu (nebo mléko) se dvěma syrovými vejci a lžičkou soli. Touto tekutinou rovnoměrně polijte celý povrch brambor v pekáči.", "Dejte péct do předehřáté trouby na 180°C. Pečte odkryté po dobu 40 až 50 minut, dokud vrchní vrstva brambor není krásně zlatavá, křupavá a tekutina zespodu není vysrážená a zapečená.", "Podávejte s kyselou okurkou."]}, {"id": "livance", "name": "🥞 Nadýchané kynuté lívance", "basePortions": 4, "caloriesPerPortion": 410, "ingredients": [{"name": "Hladká mouka (nebo polohrubá)", "amount": 250, "unit": "g"}, {"name": "Vlažné mléko", "amount": 300, "unit": "ml"}, {"name": "Droždí (čerstvé)", "amount": 15, "unit": "g"}, {"name": "Vejce", "amount": 1, "unit": "ks"}, {"name": "Cukr krupice", "amount": 2, "unit": "lžíce"}, {"name": "Sůl", "amount": 1, "unit": "špetka"}, {"name": "Olej na smažení nebo přepuštěné máslo", "amount": 3, "unit": "lžíce"}, {"name": "Tvaroh, borůvkový džem (k podávání)", "amount": 4, "unit": "porce"}], "instructions": ["Mléko mírně ohřejte, aby bylo teplé na dotek prstu (ale nesmí pálit). Nalijte zhruba decilitr do menší misky.", "Do mléka rozdrobte čerstvé droždí, přidejte lžíci cukru a dvě lžíce mouky z odváženého množství. Promíchejte, přikryjte a nechte na teplém místě 10-15 minut vzejít kvásek (vytvoří bublinky).", "Do velké zadělávací mísy prosejte zbylou mouku, přidejte špetku soli a zbylou lžíci cukru. Uprostřed udělejte důlek.", "Do důlku vyklepněte vejce, vlijte zbytek vlažného mléka a nakonec nabobtnalý kvásek.", "Vše metličkou nebo vařečkou důkladně rozšlehejte do tekutějšího, avšak hladkého těsta bez hrudek. Hustotou má připomínat těsto na kapání.", "Mísu překryjte utěrkou a nechte těsto kynout na teplém místě zhruba 30-40 minut. Těsto musí zdvojnásobit objem a být plné vzduchových bublin.", "Lívanečník nebo těžkou rovnou pánev potřete olejem a rozehřejte na střední plamen.", "Lžící nebo malou naběračkou odebírejte nakynuté těsto (už ho nepromíchávejte) a vlévejte ho do lívanečníku.", "Jakmile se na povrchu lívanců začnou tvořit bublinky a praskat (zhruba po 2 minutách) a okraje zpevní, otočte je a dozlatova osmažte i z druhé strany.", "Hotové lívance ihned potírejte ovocným džemem (borůvkovým nebo jahodovým), nahoru dejte kopeček oslazeného tvarohu či zakysané smetany a můžete je lehce posypat skořicovým cukrem."]}];
+
+        let customRecipes = JSON.parse(localStorage.getItem('smartShopper_customRecipes')) || [];
+        let allRecipes = [...customRecipes, ...builtinRecipes];
+        let currentRecipeIndex = 0;
+        let currentRecipe = allRecipes[currentRecipeIndex];
+        let currentPortions = currentRecipe ? currentRecipe.basePortions : 4;
+        let shoppingItems = JSON.parse(localStorage.getItem('smartShopper_items')) || [];
+
+        const recipeSelect = document.getElementById('recipe-select');
+        const portionsInput = document.getElementById('portions');
+        const ingredientsList = document.getElementById('ingredients-list');
+        const instructionsList = document.getElementById('instructions-list');
+        const totalCaloriesEl = document.getElementById('total-calories');
+        const portionCaloriesEl = document.getElementById('portion-calories');
+        const shoppingListEl = document.getElementById('shopping-list');
+        const btnDeleteCustom = document.getElementById('btn-delete-custom');
+        const cartBadge = document.getElementById('cart-badge');
+
+        function init() {
+            if (localStorage.getItem('smartShopper_theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+            populateRecipeSelect();
+            if(allRecipes.length > 0) {
+                selectRecipe(0);
+            }
+            renderShoppingList();
+        }
+
+        function populateRecipeSelect() {
+            recipeSelect.innerHTML = '';
+            if(customRecipes.length > 0) {
+                const optgroupCustom = document.createElement('optgroup');
+                optgroupCustom.label = "⭐ Moje Recepty";
+                customRecipes.forEach((recipe, idx) => {
+                    const option = document.createElement('option');
+                    option.value = idx; 
+                    option.textContent = recipe.name;
+                    optgroupCustom.appendChild(option);
+                });
+                recipeSelect.appendChild(optgroupCustom);
+            }
+            const optgroupBuiltin = document.createElement('optgroup');
+            optgroupBuiltin.label = "Kuchařka aplikace";
+            builtinRecipes.forEach((recipe, idx) => {
+                const option = document.createElement('option');
+                option.value = customRecipes.length + idx; 
+                option.textContent = recipe.name;
+                optgroupBuiltin.appendChild(option);
+            });
+            recipeSelect.appendChild(optgroupBuiltin);
+            recipeSelect.value = currentRecipeIndex;
+        }
+
+        recipeSelect.addEventListener('change', (e) => { selectRecipe(parseInt(e.target.value)); });
+
+        // VYCHYTÁVKA 1: Logika vyhledávání
+        document.getElementById('recipe-search').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            let firstVisible = null;
+            
+            Array.from(recipeSelect.options).forEach(opt => {
+                const recipe = allRecipes[opt.value];
+                if (!recipe) return;
+                
+                const matchesName = recipe.name.toLowerCase().includes(query);
+                const matchesIngredient = recipe.ingredients.some(i => i.name.toLowerCase().includes(query));
+                
+                if (matchesName || matchesIngredient) {
+                    opt.hidden = false;
+                    if (firstVisible === null) firstVisible = opt.value;
+                } else {
+                    opt.hidden = true;
+                }
+            });
+            
+            // Automaticky vybrat první nalezený výsledek
+            if (firstVisible !== null && recipeSelect.value !== firstVisible) {
+                recipeSelect.value = firstVisible;
+                selectRecipe(parseInt(firstVisible));
+            }
+        });
+
+
+        function selectRecipe(index) {
+            currentRecipeIndex = index;
+            currentRecipe = allRecipes[index];
+            currentPortions = currentRecipe.basePortions; 
+            if(currentRecipe.isCustom) { btnDeleteCustom.classList.remove('hidden'); } else { btnDeleteCustom.classList.add('hidden'); }
+            updatePortionsInput();
+            renderIngredients();
+            renderInstructions();
+            updateCalories();
+        }
+
+        btnDeleteCustom.addEventListener('click', () => {
+            if(confirm(`Opravdu chcete smazat recept "${currentRecipe.name}"?`)) {
+                customRecipes = customRecipes.filter(r => r.id !== currentRecipe.id);
+                localStorage.setItem('smartShopper_customRecipes', JSON.stringify(customRecipes));
+                allRecipes = [...customRecipes, ...builtinRecipes];
+                populateRecipeSelect();
+                selectRecipe(0);
+            }
+        });
+
+        document.getElementById('btn-minus').addEventListener('click', () => { if (currentPortions > 1) { currentPortions--; updateView(); } });
+        document.getElementById('btn-plus').addEventListener('click', () => { if (currentPortions < 50) { currentPortions++; updateView(); } });
+
+        function updateView() { updatePortionsInput(); renderIngredients(); updateCalories(); }
+        function updatePortionsInput() { portionsInput.value = currentPortions; }
+
+        function updateCalories() {
+            const calPerPortion = currentRecipe.caloriesPerPortion || 0;
+            portionCaloriesEl.textContent = calPerPortion;
+            totalCaloriesEl.textContent = calPerPortion * currentPortions;
+        }
+
+        function renderIngredients() {
+            ingredientsList.innerHTML = '';
+            const ratio = currentPortions / currentRecipe.basePortions;
+            currentRecipe.ingredients.forEach((ing, index) => {
+                let calculatedAmount = Math.round((ing.amount * ratio) * 10) / 10;
+                const li = document.createElement('li');
+                li.className = 'list-item flex items-center justify-between p-4 rounded-2xl shadow-sm';
+                li.innerHTML = `
+                    <label for="ing-${index}" class="flex items-center gap-4 cursor-pointer flex-1">
+                        <input type="checkbox" id="ing-${index}" class="ing-checkbox" data-name="${ing.name}" data-amount="${calculatedAmount}" data-unit="${ing.unit}">
+                        <span class="font-medium text-lg">${ing.name}</span>
+                    </label>
+                    <span class="font-bold text-[var(--primary)] text-lg px-2">${calculatedAmount} ${ing.unit}</span>
+                `;
+                ingredientsList.appendChild(li);
+            });
+        }
+
+        function renderInstructions() {
+            instructionsList.innerHTML = '';
+            currentRecipe.instructions.forEach((step) => {
+                const li = document.createElement('li');
+                // VYCHYTÁVKA 2: Klikací postup přípravy (odškrtávání kroků)
+                li.className = 'pl-2 hover:text-[var(--primary)] transition-colors duration-300 cursor-pointer p-2 rounded-lg hover:bg-[var(--item-bg)]';
+                li.textContent = step;
+                li.onclick = function() {
+                    this.classList.toggle('line-through-custom');
+                    this.classList.toggle('text-green-500');
+                    this.classList.toggle('dark:text-green-400');
+                };
+                instructionsList.appendChild(li);
+            });
+        }
+
+        document.getElementById('btn-generate-list').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.ing-checkbox');
+            let addedCount = 0;
+            checkboxes.forEach(cb => {
+                if (!cb.checked) {
+                    const itemExists = shoppingItems.find(item => item.name === cb.dataset.name);
+                    if (itemExists && itemExists.unit === cb.dataset.unit) {
+                        itemExists.amount = parseFloat(itemExists.amount) + parseFloat(cb.dataset.amount);
+                        itemExists.purchased = false; 
+                    } else {
+                        shoppingItems.push({ id: Date.now() + Math.random(), name: cb.dataset.name, amount: parseFloat(cb.dataset.amount), unit: cb.dataset.unit, purchased: false });
+                    }
+                    addedCount++;
+                    cb.checked = true; 
+                }
+            });
+
+            if(addedCount > 0) {
+                saveAndRenderShoppingList();
+                const btn = document.getElementById('btn-generate-list');
+                const orig = btn.innerHTML;
+                btn.innerHTML = `<span>✅ Přidáno ${addedCount} položek!</span>`;
+                btn.style.backgroundColor = '#10b981';
+                setTimeout(() => { btn.innerHTML = orig; btn.style.backgroundColor = 'var(--primary)'; }, 2000);
+            } else {
+                alert('Všechny suroviny máte označené jako "Mám doma", není co přidat.');
+            }
+        });
+
+        function updateBadge() {
+            const activeItems = shoppingItems.filter(i => !i.purchased).length;
+            if (activeItems > 0) {
+                cartBadge.textContent = activeItems;
+                cartBadge.classList.remove('hidden');
+            } else {
+                cartBadge.classList.add('hidden');
+            }
+        }
+
+        function renderShoppingList() {
+            shoppingListEl.innerHTML = '';
+            const emptyState = document.getElementById('empty-state');
+            const btnCopyList = document.getElementById('btn-copy-list');
+            
+            updateBadge();
+
+            if (shoppingItems.length === 0) {
+                emptyState.classList.remove('hidden');
+                shoppingListEl.classList.add('hidden');
+                btnCopyList.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            shoppingListEl.classList.remove('hidden');
+            btnCopyList.classList.remove('hidden');
+
+            shoppingItems.forEach((item) => {
+                const li = document.createElement('li');
+                li.className = 'list-item flex items-center gap-4 p-4 rounded-2xl shadow-sm';
+                const textClass = item.purchased ? 'line-through-custom' : 'font-medium';
+                const displayAmount = Math.round(item.amount * 10) / 10;
+                li.innerHTML = `
+                    <label for="shop-${item.id}" class="flex items-center gap-4 flex-1 cursor-pointer">
+                        <input type="checkbox" id="shop-${item.id}" ${item.purchased ? 'checked' : ''} onchange="togglePurchase('${item.id}')">
+                        <span class="text-lg ${textClass}">${item.name}</span>
+                    </label>
+                    <span class="text-sm font-semibold ${textClass}">${displayAmount} ${item.unit}</span>
+                    <button onclick="removeShoppingItem('${item.id}')" class="text-red-400 hover:text-red-600 p-2 ml-2">✕</button>
+                `;
+                shoppingListEl.appendChild(li);
+            });
+        }
+
+        window.togglePurchase = function(id) {
+            const item = shoppingItems.find(i => i.id == id);
+            if(item) { item.purchased = !item.purchased; saveAndRenderShoppingList(); }
+        }
+
+        window.removeShoppingItem = function(id) {
+            shoppingItems = shoppingItems.filter(i => i.id != id);
+            saveAndRenderShoppingList();
+        }
+
+        document.getElementById('btn-clear-list').addEventListener('click', () => {
+            if(confirm('Opravdu vymazat celý nákupní seznam?')) { shoppingItems = []; saveAndRenderShoppingList(); }
+        });
+
+        function saveAndRenderShoppingList() {
+            localStorage.setItem('smartShopper_items', JSON.stringify(shoppingItems));
+            renderShoppingList();
+        }
+
+        function switchView(viewName) {
+            document.getElementById('nav-home').classList.toggle('active', viewName === 'home');
+            document.getElementById('nav-list').classList.toggle('active', viewName === 'list');
+            
+            document.getElementById('view-home').classList.toggle('hidden', viewName !== 'home');
+            document.getElementById('view-list').classList.toggle('hidden', viewName !== 'list');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        document.getElementById('btn-copy-list').addEventListener('click', () => {
+            const textToCopy = shoppingItems.filter(i => !i.purchased).map(i => `- ${i.name} (${Math.round(i.amount * 10) / 10} ${i.unit})`).join('\n');
+            if(!textToCopy) return;
+            navigator.clipboard.writeText("Můj nákupní seznam:\n" + textToCopy).then(() => {
+                const btn = document.getElementById('btn-copy-list');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '✅ Zkopírováno!';
+                setTimeout(() => btn.innerHTML = orig, 2000);
+            });
+        });
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('smartShopper_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        });
+
+        
+        // --- KOLO ŠTĚSTÍ ---
+        let wheelIngredients = [];
+        let selectedWheelRecipe = null;
+        let spinning = false;
+
+        // Pomocná funkce pro odstranění diakritiky (aby hledání fungovalo pro 'kuřecí' i 'kureci')
+        function normalizeText(text) {
+            return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+
+        function openWheel() {
+            document.getElementById('wheel-modal').classList.remove('hidden');
+            document.getElementById('wheel-modal').classList.add('flex');
+            renderWheelTags();
+        }
+
+        function closeWheel() {
+            if(spinning) return; // Nedovolit zavřít během točení
+            document.getElementById('wheel-modal').classList.add('hidden');
+            document.getElementById('wheel-modal').classList.remove('flex');
+        }
+
+        function addWheelIngredient() {
+            const inp = document.getElementById('wheel-ing-input');
+            const val = inp.value.trim();
+            if(val && !wheelIngredients.includes(val)) {
+                wheelIngredients.push(val);
+                renderWheelTags();
+            }
+            inp.value = '';
+        }
+
+        function removeWheelIngredient(val) {
+            wheelIngredients = wheelIngredients.filter(i => i !== val);
+            renderWheelTags();
+        }
+
+        function renderWheelTags() {
+            const container = document.getElementById('wheel-tags');
+            container.innerHTML = '';
+            wheelIngredients.forEach(ing => {
+                const span = document.createElement('span');
+                span.className = 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 shadow-sm';
+                span.innerHTML = `${ing} <button onclick="removeWheelIngredient('${ing}')" class="hover:text-red-500 font-bold ml-1">&times;</button>`;
+                container.appendChild(span);
+            });
+            
+            if(!spinning) {
+                document.getElementById('wheel-result').textContent = wheelIngredients.length > 0 ? "Připraveno k roztočení!" : "Zadej suroviny a roztoč to!";
+                document.getElementById('wheel-result').className = "text-lg md:text-xl font-bold text-center w-full px-4 text-[var(--text-muted)]";
+                document.getElementById('btn-go-recipe').classList.add('hidden');
+                selectedWheelRecipe = null;
+            }
+        }
+
+        function spinWheel() {
+            if(spinning) return;
+            
+            let eligible = [];
+            
+            if(wheelIngredients.length > 0) {
+                const normalizedSearch = wheelIngredients.map(normalizeText);
+                
+                // Přesnější filtr - oboduje recepty.
+                const scoredRecipes = allRecipes.map(r => {
+                    let score = 0;
+                    const rName = normalizeText(r.name);
+                    const rIngs = r.ingredients.map(ri => normalizeText(ri.name));
+                    
+                    normalizedSearch.forEach(searchIng => {
+                        // Kontrola, jestli název receptu nebo některá z ingrediencí obsahuje hledaný text
+                        if (rName.includes(searchIng) || rIngs.some(ing => ing.includes(searchIng))) {
+                            score++;
+                        }
+                    });
+                    return { recipe: r, score: score };
+                });
+                
+                // Najdeme maximální dosažené skóre (nejvyšší shodu)
+                const maxScore = Math.max(...scoredRecipes.map(sr => sr.score));
+                
+                if (maxScore > 0) {
+                    // Chceme pouze recepty s plnou shodou (pokud jsi zadal 2 suroviny, musí mít obě 2).
+                    // Zamezí to tomu, aby to našlo špagety jen kvůli tomu, že jsi do kola napsal "vejce, maso"
+                    eligible = scoredRecipes.filter(sr => sr.score === normalizedSearch.length).map(sr => sr.recipe);
+                }
+            } else {
+                eligible = allRecipes;
+            }
+            
+            if(eligible.length === 0) {
+                document.getElementById('wheel-result').textContent = "Sakra, recept s TĚMITO všemi surovinami tu není :(";
+                document.getElementById('wheel-result').className = "text-lg md:text-xl font-bold text-center w-full px-4 text-red-500";
+                return;
+            }
+
+            spinning = true;
+            document.getElementById('btn-go-recipe').classList.add('hidden');
+            const resultEl = document.getElementById('wheel-result');
+            const spinBtn = document.getElementById('btn-spin');
+            spinBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            spinBtn.innerHTML = "🎰 Točí se...";
+            
+            let ticks = 0;
+            const maxTicks = 40;
+            let speed = 40;
+
+            function tick() {
+                const randomRecipe = eligible[Math.floor(Math.random() * eligible.length)];
+                resultEl.textContent = randomRecipe.name;
+                resultEl.style.transform = `scale(${1 + Math.random()*0.05})`;
+                resultEl.className = "text-xl font-bold text-center w-full px-4 text-[var(--text-main)]";
+                
+                ticks++;
+                if(ticks < maxTicks) {
+                    speed += (ticks > 25 ? 15 : 2); // Postupné zpomalování rulety
+                    setTimeout(tick, speed);
+                } else {
+                    selectedWheelRecipe = eligible[Math.floor(Math.random() * eligible.length)];
+                    resultEl.textContent = "🎉 " + selectedWheelRecipe.name + " 🎉";
+                    resultEl.style.transform = 'scale(1.05)';
+                    resultEl.className = 'text-xl md:text-2xl font-bold text-orange-500 text-center w-full px-4 transition-transform duration-300 drop-shadow-md';
+                    
+                    document.getElementById('btn-go-recipe').classList.remove('hidden');
+                    spinBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    spinBtn.innerHTML = "🎰 Zkusit znovu";
+                    spinning = false;
+                }
+            }
+            
+            tick();
+        }
+
+        function goFromWheel() {
+            if(selectedWheelRecipe) {
+                const idx = allRecipes.findIndex(r => r.id === selectedWheelRecipe.id);
+                if(idx !== -1) {
+                    recipeSelect.value = idx;
+                    selectRecipe(idx);
+                    closeWheel();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        }
+
+        init();
+    </script>
+
+    <!-- KOLO ŠTĚSTÍ MODAL -->
+    <div id="wheel-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+        <div class="glass-card w-full max-w-md p-6 md:p-8 rounded-3xl relative flex flex-col items-center shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+            <button onclick="closeWheel()" class="absolute top-4 right-5 text-[var(--text-muted)] hover:text-red-500 text-3xl font-bold leading-none">&times;</button>
+            <h2 class="text-3xl font-bold mb-2 flex items-center gap-3"><span class="text-4xl">🎡</span> Kolo štěstí</h2>
+            <p class="text-[var(--text-muted)] text-center mb-6 font-medium">Zadej suroviny, které chceš zpracovat, a nech to na náhodě!</p>
+
+            <div class="w-full mb-6">
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="wheel-ing-input" placeholder="Např. kuřecí, vejce, rýže..." class="w-full p-3 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none border border-[var(--item-border)] bg-[var(--item-bg)] text-[var(--text-main)] shadow-inner" onkeypress="if(event.key==='Enter') addWheelIngredient()">
+                    <button onclick="addWheelIngredient()" class="bg-[var(--primary)] text-white font-bold px-5 rounded-xl hover:bg-[var(--primary-hover)] transition-colors shadow-md text-xl">+</button>
+                </div>
+                <div id="wheel-tags" class="flex flex-wrap gap-2 max-h-24 overflow-y-auto"></div>
+            </div>
+
+            <div id="wheel-spinner-container" class="w-full h-24 bg-[var(--item-bg)] border-2 border-[var(--item-border)] rounded-2xl mb-6 flex items-center justify-center overflow-hidden relative shadow-inner">
+                <div class="absolute inset-0 bg-gradient-to-r from-[var(--item-bg)] via-transparent to-[var(--item-bg)] z-10 pointer-events-none opacity-50"></div>
+                <div id="wheel-result" class="text-lg md:text-xl font-bold text-center w-full px-4 transition-transform duration-75 text-[var(--text-muted)]">Zadej suroviny a roztoč to!</div>
+            </div>
+
+            <button id="btn-spin" onclick="spinWheel()" class="w-full py-4 rounded-2xl font-bold text-white text-lg shadow-lg hover:shadow-orange-500/40 transition-all transform hover:-translate-y-1 duration-300" style="background-color: var(--primary)">
+                🎰 Roztočit kolo
+            </button>
+            
+            <button id="btn-go-recipe" onclick="goFromWheel()" class="w-full py-4 mt-3 rounded-2xl font-bold bg-green-500 text-white shadow-lg hover:bg-green-600 transition-all hidden transform hover:-translate-y-1">
+                👀 Zobrazit tento recept
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>
